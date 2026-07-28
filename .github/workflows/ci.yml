@@ -1,0 +1,41 @@
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+permissions:
+  contents: read
+
+jobs:
+  ci:
+    # Registry-based CI for the public repository, where the published
+    # @bisibility/sdk range resolves from npm. The private repository runs the
+    # same checks through its own workflow instead, so this job is skipped there.
+    if: github.repository == 'CorgiCorner/bisibility-cli'
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - name: Check out CLI
+        uses: actions/checkout@34e114876b0b11c390a56381ad16ebd13914f8d5 # v4
+
+      - name: Set up Node
+        uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020 # v4
+        with:
+          node-version-file: .nvmrc
+          cache: npm
+
+      - name: Use the repository npm version
+        run: (cd "$RUNNER_TEMP" && npm install --global npm@10.9.3)
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Check
+        run: npm run check
+
+      - name: Inspect package
+        run: |
+          npm pack --dry-run --ignore-scripts
+          head -n 1 dist/bin.js | grep -Fx '#!/usr/bin/env node'

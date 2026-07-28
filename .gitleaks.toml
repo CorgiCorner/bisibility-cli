@@ -1,0 +1,16 @@
+title = "bisibility CLI gitleaks configuration"
+
+[extend]
+useDefault = true
+
+[[allowlists]]
+description = "Obvious CLI documentation and test placeholders"
+regexTarget = "match"
+regexes = [
+  '''bsk_live\.\.\.[a-zA-Z0-9]{4}''',
+  '''bsk_live_(\.\.\.|[a-z0-9_]*(example|secret|do_not_log|123456)[a-z0-9_]*)''',
+  '''bsp_live_(\.\.\.|[a-z0-9_]*(example|secret|123456)[a-z0-9_]*)''',
+  '''mig_(\.\.\.|secret)''',
+  '''Bearer reflected-secret''',
+  '''US/Texas/Austin''',
+]
