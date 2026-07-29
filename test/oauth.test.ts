@@ -1,6 +1,6 @@
 import { createHash } from "node:crypto";
 import { createServer } from "node:http";
-import { afterEach, describe, expect, it } from "vitest";
+import { afterEach, describe, expect, it, vi } from "vitest";
 import { loginWithPkce } from "../src/oauth.js";
 
 const servers: ReturnType<typeof createServer>[] = [];
@@ -12,6 +12,150 @@ afterEach(async () => {
 });
 
 describe("OAuth PKCE login", () => {
+  it("reports browser progress and the fallback URL before the callback completes", async () => {
+    const progress: string[] = [];
+    let authorizeUrl = "";
+    let browserOpened: () => void = () => undefined;
+    const opened = new Promise<void>((resolve) => {
+      browserOpened = resolve;
+    });
+    const server = createServer(async (req, res) => {
+      const origin = `http://127.0.0.1:${(server.address() as { port: number }).port}`;
+      const url = new URL(req.url ?? "/", origin);
+      if (url.pathname === "/.well-known/oauth-authorization-server") {
+        res.setHeader("Content-Type", "application/json");
+        res.end(
+          JSON.stringify({
+            authorization_endpoint: `${origin}/authorize`,
+            token_endpoint: `${origin}/token`,
+          }),
+        );
+        return;
+      }
+      if (url.pathname === "/token") {
+        res.setHeader("Content-Type", "application/json");
+        res.end(JSON.stringify({ access_token: "opaque-access-token" }));
+        return;
+      }
+      res.writeHead(404).end();
+    });
+    servers.push(server);
+    await new Promise<void>((resolve) => server.listen(0, "127.0.0.1", resolve));
+    const origin = `http://127.0.0.1:${(server.address() as { port: number }).port}`;
+
+    const login = loginWithPkce(origin, {
+      onProgress: (message) => progress.push(message),
+      openBrowser: async (url) => {
+        authorizeUrl = url;
+        browserOpened();
+      },
+      timeoutMs: 5_000,
+    });
+    await opened;
+
+    await vi.waitFor(() => {
+      expect(progress.join("")).toContain("Opening the default browser");
+      expect(progress.join("")).toContain(`Authorization URL: ${authorizeUrl}`);
+      expect(progress.join("")).toContain(`Waiting for authorization at ${origin}`);
+    });
+    expect(progress.join("")).not.toContain("opaque-access-token");
+    expect(authorizeUrl).not.toContain("code_verifier");
+
+    const authorization = new URL(authorizeUrl);
+    const callback = new URL(authorization.searchParams.get("redirect_uri") ?? "");
+    callback.searchParams.set("code", "authorization-code");
+    callback.searchParams.set("state", authorization.searchParams.get("state") ?? "");
+    expect(await fetch(callback)).toMatchObject({ status: 200 });
+    await expect(login).resolves.toMatchObject({ accessToken: "opaque-access-token" });
+  });
+
+  it("keeps the loopback listener alive when opening the browser fails", async () => {
+    const progress: string[] = [];
+    let authorizeUrl = "";
+    let browserAttempted: () => void = () => undefined;
+    const attempted = new Promise<void>((resolve) => {
+      browserAttempted = resolve;
+    });
+    const server = createServer(async (req, res) => {
+      const origin = `http://127.0.0.1:${(server.address() as { port: number }).port}`;
+      const url = new URL(req.url ?? "/", origin);
+      if (url.pathname === "/.well-known/oauth-authorization-server") {
+        res.setHeader("Content-Type", "application/json");
+        res.end(
+          JSON.stringify({
+            authorization_endpoint: `${origin}/authorize`,
+            token_endpoint: `${origin}/token`,
+          }),
+        );
+        return;
+      }
+      if (url.pathname === "/token") {
+        res.setHeader("Content-Type", "application/json");
+        res.end(JSON.stringify({ access_token: "opaque-access-token" }));
+        return;
+      }
+      res.writeHead(404).end();
+    });
+    servers.push(server);
+    await new Promise<void>((resolve) => server.listen(0, "127.0.0.1", resolve));
+    const origin = `http://127.0.0.1:${(server.address() as { port: number }).port}`;
+
+    const login = loginWithPkce(origin, {
+      onProgress: (message) => progress.push(message),
+      openBrowser: async (url) => {
+        authorizeUrl = url;
+        browserAttempted();
+        throw new Error("browser unavailable");
+      },
+      timeoutMs: 5_000,
+    });
+    await attempted;
+    await vi.waitFor(() => {
+      expect(progress.join("")).toContain("Open the authorization URL above manually");
+    });
+
+    const authorization = new URL(authorizeUrl);
+    const callback = new URL(authorization.searchParams.get("redirect_uri") ?? "");
+    callback.searchParams.set("code", "authorization-code");
+    callback.searchParams.set("state", authorization.searchParams.get("state") ?? "");
+    expect(await fetch(callback)).toMatchObject({ status: 200 });
+    await expect(login).resolves.toMatchObject({ accessToken: "opaque-access-token" });
+  });
+
+  it("still times out and closes the listener after browser-open failure", async () => {
+    let redirectUri = "";
+    const server = createServer((req, res) => {
+      const origin = `http://127.0.0.1:${(server.address() as { port: number }).port}`;
+      const url = new URL(req.url ?? "/", origin);
+      if (url.pathname === "/.well-known/oauth-authorization-server") {
+        res.setHeader("Content-Type", "application/json");
+        res.end(
+          JSON.stringify({
+            authorization_endpoint: `${origin}/authorize`,
+            token_endpoint: `${origin}/token`,
+          }),
+        );
+        return;
+      }
+      res.writeHead(404).end();
+    });
+    servers.push(server);
+    await new Promise<void>((resolve) => server.listen(0, "127.0.0.1", resolve));
+    const origin = `http://127.0.0.1:${(server.address() as { port: number }).port}`;
+
+    await expect(
+      loginWithPkce(origin, {
+        onProgress: () => undefined,
+        openBrowser: async (authorizeUrl) => {
+          redirectUri = new URL(authorizeUrl).searchParams.get("redirect_uri") ?? "";
+          throw new Error("browser unavailable");
+        },
+        timeoutMs: 20,
+      }),
+    ).rejects.toThrow("OAuth login timed out.");
+    await expect(fetch(redirectUri)).rejects.toThrow();
+  });
+
   it("discovers endpoints, validates state, and exchanges the loopback code", async () => {
     let challenge = "";
     let redirectUri = "";

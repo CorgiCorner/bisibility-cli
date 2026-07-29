@@ -37,6 +37,7 @@ export const booleanFlags = new Set([
   "no-subdomains",
   "page",
   "primary",
+  "revoke",
   "use",
   "version",
 ]);

@@ -31,6 +31,7 @@ export async function commandAuthLogin(ctx: CommandContext) {
   const name = getStringFlag(ctx.args, "name") ?? `CLI on ${(ctx.deps.hostName ?? hostname)()}`;
   const oauth = await loginWithPkce(settings.cloudUrl, {
     ...(ctx.deps.fetch ? { fetch: ctx.deps.fetch } : {}),
+    onProgress: ctx.progress,
     ...(ctx.deps.openBrowser ? { openBrowser: ctx.deps.openBrowser } : {}),
     ...(ctx.deps.oauthTimeoutMs ? { timeoutMs: ctx.deps.oauthTimeoutMs } : {}),
   });
@@ -51,26 +52,54 @@ export async function commandAuthLogin(ctx: CommandContext) {
   const path = await writeConfigFile(ctx.args, next, ctx.deps);
   return hasFlag(ctx.args, "json")
     ? renderJson({ configPath: path, expiresAt: issued.expires_at, id: issued.id, name, scope })
-    : renderKeyValues([
+    : `Authentication succeeded for ${new URL(settings.cloudUrl).origin}.\n${renderKeyValues([
         ["authenticated", "yes"],
         ["token", typeof issued.id === "string" ? issued.id : undefined],
         ["scope", scope],
         ["expires", typeof issued.expires_at === "string" ? issued.expires_at : undefined],
         ["config", path],
-      ]);
+      ])}`;
 }
 
 export async function commandAuthLogout(ctx: CommandContext) {
-  const { client, settings } = await settingsAndClient(ctx, false);
-  if (!settings.apiKey) throw new CliError("No API credential is configured.");
-  const personal = settings.apiKey.startsWith("bsp_");
-  if (personal) {
-    await client.revokeMyToken("current");
+  const settings = await loadSettings(ctx.args, ctx.deps);
+  const shouldRevoke = hasFlag(ctx.args, "revoke");
+  const env = ctx.deps.env ?? process.env;
+  const externalCredential =
+    getStringFlag(ctx.args, "api-key") ?? env.BISIBILITY_API_KEY ?? undefined;
+
+  if (!shouldRevoke && externalCredential) {
+    throw new CliError(
+      "The active credential comes from --api-key or BISIBILITY_API_KEY. Remove it from the command or environment; the config was not changed.",
+    );
   }
-  const { apiKey: _removed, ...next } = await readConfigFile(ctx.args, ctx.deps);
-  const path = await writeConfigFile(ctx.args, next, ctx.deps);
+  if (!shouldRevoke && !settings.config.apiKey) {
+    throw new CliError("No API credential is stored in the config.");
+  }
+
+  if (shouldRevoke) {
+    if (!settings.apiKey) throw new CliError("No API credential is configured.");
+    if (!settings.apiKey.startsWith("bsp_")) {
+      throw new CliError("--revoke requires a personal access token.");
+    }
+    await new BisibilityClient({
+      apiKey: settings.apiKey,
+      baseUrl: settings.baseUrl,
+      ...(ctx.deps.fetch ? { fetch: ctx.deps.fetch } : {}),
+    }).revokeMyToken("current");
+  }
+
+  const { apiKey: storedCredential, ...configWithoutCredential } = settings.config;
+  const removeStoredCredential = !externalCredential && Boolean(storedCredential);
+  const path = removeStoredCredential
+    ? await writeConfigFile(ctx.args, configWithoutCredential, ctx.deps)
+    : settings.configPath;
   return renderKeyValues([
-    ["revoked", personal ? "yes" : "not a personal token"],
+    ["revoked", shouldRevoke ? "yes" : "no"],
+    [
+      "local credential",
+      removeStoredCredential ? "removed" : storedCredential ? "unchanged" : "not stored",
+    ],
     ["config", path],
   ]);
 }

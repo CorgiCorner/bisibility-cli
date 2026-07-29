@@ -113,9 +113,10 @@ export async function runCli(argv: readonly string[], deps: CliDeps = {}): Promi
   if (hasFlag(args, "version")) return { exitCode: 0, stderr: "", stdout: `${VERSION}\n` };
   if (hasFlag(args, "help")) return { exitCode: 0, stderr: "", stdout: helpFor(args.positionals) };
   const stderr: string[] = [];
+  const progress = deps.onProgress ?? ((message: string) => stderr.push(message));
   try {
     validatePublicIdArgs(args);
-    const stdout = await dispatch({ args, deps, stderr });
+    const stdout = await dispatch({ args, deps, progress, stderr });
     return { exitCode: 0, stderr: stderr.join(""), stdout };
   } catch (error) {
     const exitCode = error instanceof CliError ? error.exitCode : 1;

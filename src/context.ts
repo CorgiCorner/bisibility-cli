@@ -43,6 +43,7 @@ export type CliDeps = ConfigDeps & {
   fetch?: FetchLike;
   hostName?: () => string;
   now?: () => Date;
+  onProgress?: (message: string) => void;
   oauthTimeoutMs?: number;
   openBrowser?: (url: string) => Promise<void>;
   projectSelector?: (projects: readonly Project[]) => Promise<string | undefined>;
@@ -58,6 +59,7 @@ export type CliResult = {
 export type CommandContext = {
   args: ParsedArgs;
   deps: CliDeps;
+  progress: (message: string) => void;
   stderr: string[];
 };
 

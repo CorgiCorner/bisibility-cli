@@ -10,6 +10,7 @@ const SCOPES = ["openid", "profile", "email", "tokens:write"] as const;
 
 export type OAuthLoginDeps = {
   fetch?: typeof globalThis.fetch;
+  onProgress?: (message: string) => void;
   openBrowser?: (url: string) => Promise<void>;
   timeoutMs?: number;
 };
@@ -181,13 +182,18 @@ export async function loginWithPkce(cloudUrl: string, deps: OAuthLoginDeps = {})
   authorizeUrl.searchParams.set("response_type", "code");
   authorizeUrl.searchParams.set("scope", SCOPES.join(" "));
   authorizeUrl.searchParams.set("state", state);
+  const authorizationUrl = authorizeUrl.toString();
 
+  deps.onProgress?.("Opening the default browser for Bisibility authentication.\n");
+  deps.onProgress?.(`Authorization URL: ${authorizationUrl}\n`);
   try {
-    await (deps.openBrowser ?? defaultOpenBrowser)(authorizeUrl.toString());
-  } catch (error) {
-    loopback.close();
-    throw error;
+    await (deps.openBrowser ?? defaultOpenBrowser)(authorizationUrl);
+  } catch {
+    deps.onProgress?.(
+      "Could not open the default browser. Open the authorization URL above manually.\n",
+    );
   }
+  deps.onProgress?.(`Waiting for authorization at ${new URL(cloudUrl).origin}.\n`);
   const callback = await loopback.callback;
   if ("error" in callback) throw new Error(callback.error);
 
@@ -214,5 +220,5 @@ export async function loginWithPkce(cloudUrl: string, deps: OAuthLoginDeps = {})
     throw new Error(detail);
   }
 
-  return { accessToken: payload.access_token, authorizeUrl: authorizeUrl.toString() };
+  return { accessToken: payload.access_token, authorizeUrl: authorizationUrl };
 }

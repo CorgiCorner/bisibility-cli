@@ -5626,9 +5626,13 @@ describe("auth status", () => {
   it("logs in through PKCE exchange and stores the reveal-once PAT", async () => {
     const dir = await mkdtemp(join(tmpdir(), "bisibility-cli-login-"));
     const config = join(dir, "config.json");
-    oauth.loginWithPkce.mockResolvedValue({
-      accessToken: "oauth_access",
-      authorizeUrl: "https://cloud.test/authorize",
+    oauth.loginWithPkce.mockImplementationOnce(async (_cloudUrl, loginDeps) => {
+      loginDeps.onProgress?.("Opening the default browser.\n");
+      loginDeps.onProgress?.("Waiting for authorization at https://cloud.test.\n");
+      return {
+        accessToken: "oauth_access",
+        authorizeUrl: "https://cloud.test/authorize",
+      };
     });
     const fetchMock = vi.fn(
       async () =>
@@ -5682,6 +5686,63 @@ describe("auth status", () => {
       name: "Laptop",
       scope: "write",
     });
+    expect(result.stdout).toContain("Authentication succeeded for https://cloud.test.");
+    expect(result.stdout).toContain("pat_a10000000000000000000000");
+    expect(result.stdout).not.toContain("bsp_live_1234567890abcdef");
+    expect(result.stderr).toBe(
+      "Opening the default browser.\nWaiting for authorization at https://cloud.test.\n",
+    );
+  });
+
+  it("streams login progress while keeping JSON stdout to one value", async () => {
+    const dir = await mkdtemp(join(tmpdir(), "bisibility-cli-login-json-"));
+    const config = join(dir, "config.json");
+    const progress: string[] = [];
+    let finishOauth: () => void = () => undefined;
+    const oauthPending = new Promise<void>((resolve) => {
+      finishOauth = resolve;
+    });
+    oauth.loginWithPkce.mockImplementationOnce(async (_cloudUrl, loginDeps) => {
+      loginDeps.onProgress?.("Opening the default browser.\n");
+      loginDeps.onProgress?.("Waiting for authorization at https://cloud.test.\n");
+      await oauthPending;
+      return {
+        accessToken: "oauth_access",
+        authorizeUrl: "https://cloud.test/authorize",
+      };
+    });
+    sdk.client.createMyToken.mockResolvedValueOnce({
+      expires_at: "2026-10-10T00:00:00.000Z",
+      id: "pat_a10000000000000000000000",
+      token: "bsp_live_1234567890abcdef",
+    });
+
+    const login = runCli(
+      ["auth", "login", "--config", config, "--json"],
+      deps({
+        env: {
+          BISIBILITY_BASE_URL: "https://cloud.test/api/v1",
+          BISIBILITY_CLOUD_URL: "https://cloud.test",
+        },
+        onProgress: (message) => progress.push(message),
+      }),
+    );
+    await vi.waitFor(() => {
+      expect(progress.join("")).toContain("Waiting for authorization at https://cloud.test.");
+    });
+
+    finishOauth();
+    const result = await login;
+    expect(JSON.parse(result.stdout)).toEqual({
+      configPath: config,
+      expiresAt: "2026-10-10T00:00:00.000Z",
+      id: "pat_a10000000000000000000000",
+      name: expect.any(String),
+      scope: "admin",
+    });
+    expect(result.stderr).toBe("");
+    expect(result.stdout).not.toContain("Authentication succeeded");
+    expect(result.stdout).not.toContain("bsp_live_1234567890abcdef");
   });
 
   it("maps SDK problem details during the OAuth token exchange", async () => {
@@ -5706,17 +5767,76 @@ describe("auth status", () => {
     });
   });
 
-  it("revokes the current PAT on logout and clears the config", async () => {
+  it("clears the local PAT on logout without revoking it", async () => {
     const dir = await mkdtemp(join(tmpdir(), "bisibility-cli-logout-"));
     const config = join(dir, "config.json");
     await writeFile(config, JSON.stringify({ apiKey: "bsp_live_1234567890abcdef" }));
-    sdk.client.revokeMyToken.mockResolvedValueOnce({ id: "pat_a10000000000000000000000" });
 
     const result = await runCli(["auth", "logout", "--config", config], deps({ env: {} }));
 
     expect(result.exitCode).toBe(0);
-    expect(sdk.client.revokeMyToken).toHaveBeenCalledWith("current");
+    expect(sdk.client.revokeMyToken).not.toHaveBeenCalled();
+    expect(result.stdout).toMatch(/revoked\s+no/);
     expect(JSON.parse(await readFile(config, "utf8"))).not.toHaveProperty("apiKey");
+  });
+
+  it("revokes the current PAT only when logout receives --revoke", async () => {
+    const dir = await mkdtemp(join(tmpdir(), "bisibility-cli-logout-revoke-"));
+    const config = join(dir, "config.json");
+    await writeFile(config, JSON.stringify({ apiKey: "bsp_live_1234567890abcdef" }));
+    sdk.client.revokeMyToken.mockResolvedValueOnce({ id: "pat_a10000000000000000000000" });
+
+    const result = await runCli(
+      ["auth", "logout", "--revoke", "--config", config],
+      deps({ env: {} }),
+    );
+
+    expect(result.exitCode).toBe(0);
+    expect(sdk.client.revokeMyToken).toHaveBeenCalledWith("current");
+    expect(result.stdout).toMatch(/revoked\s+yes/);
+    expect(JSON.parse(await readFile(config, "utf8"))).not.toHaveProperty("apiKey");
+  });
+
+  it("does not claim to log out an environment-provided credential", async () => {
+    const dir = await mkdtemp(join(tmpdir(), "bisibility-cli-logout-env-"));
+    const config = join(dir, "config.json");
+    await writeFile(config, JSON.stringify({ apiKey: "bsp_live_stored1234567890" }));
+
+    const result = await runCli(
+      ["auth", "logout", "--config", config],
+      deps({ env: { BISIBILITY_API_KEY: "bsp_live_environment123456" } }),
+    );
+
+    expect(result).toMatchObject({
+      exitCode: 1,
+      stderr: expect.stringContaining("BISIBILITY_API_KEY"),
+    });
+    expect(sdk.client.revokeMyToken).not.toHaveBeenCalled();
+    expect(JSON.parse(await readFile(config, "utf8"))).toHaveProperty(
+      "apiKey",
+      "bsp_live_stored1234567890",
+    );
+  });
+
+  it("refuses to revoke a project API key through auth logout", async () => {
+    const dir = await mkdtemp(join(tmpdir(), "bisibility-cli-logout-project-key-"));
+    const config = join(dir, "config.json");
+    await writeFile(config, JSON.stringify({ apiKey: "bsk_live_1234567890abcdef" }));
+
+    const result = await runCli(
+      ["auth", "logout", "--revoke", "--config", config],
+      deps({ env: {} }),
+    );
+
+    expect(result).toMatchObject({
+      exitCode: 1,
+      stderr: "--revoke requires a personal access token.\n",
+    });
+    expect(sdk.client.revokeMyToken).not.toHaveBeenCalled();
+    expect(JSON.parse(await readFile(config, "utf8"))).toHaveProperty(
+      "apiKey",
+      "bsk_live_1234567890abcdef",
+    );
   });
 
   it("shows identity for a personal token", async () => {

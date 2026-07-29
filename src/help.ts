@@ -795,6 +795,7 @@ Options:
   --name <name>                Personal-token name, defaults to CLI on <hostname>
   --scope <tier>               read, write, or admin; defaults to admin
   --expires <duration>         30, 90, 365, or never; defaults to 90
+  --revoke                     Revoke the active PAT during logout
   --offline                    Do not call the API
   --json                       Print JSON
 
@@ -805,6 +806,9 @@ directory uses mode 0700 and the file uses mode 0600; Windows relies on inherite
 user-profile ACLs. On a headless machine, create a token at
 https://bisibility.com/app/account/security and run
 bisibility config set apiKey bsp_live_....
+
+Logout removes a credential stored in the config without revoking it. Pass
+--revoke to revoke the active personal access token on the server as well.
 `;
 }
 
