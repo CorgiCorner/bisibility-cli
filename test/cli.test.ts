@@ -144,7 +144,7 @@ vi.mock("@bisibility/sdk", () => {
   };
 });
 
-const apiKey = "bsk_live_test_1234567890";
+const apiKey = "bsb_key_live_test_1234567890";
 
 function deps(extra: CliDeps = {}): CliDeps {
   return {
@@ -201,7 +201,7 @@ function apiKeyResource(overrides: Record<string, unknown> = {}) {
     id: "key_a10000000000000000000000",
     last_used_at: null,
     name: "CI key",
-    prefix: "bsk_live_abcd",
+    prefix: "bsb_key_live_abcd",
     revoked_at: null,
     ...overrides,
   };
@@ -457,7 +457,7 @@ function alertRule(overrides: Record<string, unknown> = {}) {
     channels: ["email"],
     condition_type: "threshold",
     enabled: true,
-    id: "rule_a10000000000000000000000",
+    id: "alr_a10000000000000000000000",
     name: "Top 10 drop",
     target_type: "keyword",
     threshold_position: 10,
@@ -471,7 +471,7 @@ function triggeredAlert(overrides: Record<string, unknown> = {}) {
     ctas: ["Open keyword"],
     current: "12",
     headline: "Keyword left top 10",
-    id: "alert_a10000000000000000000000",
+    id: "al_a10000000000000000000000",
     keyword: "rank tracker",
     previous: "8",
     rule: "Top 10 drop",
@@ -502,7 +502,7 @@ function teamMember(overrides: Record<string, unknown> = {}) {
   return {
     color: "blue",
     email: "owner@example.com",
-    id: "member_a10000000000000000000000",
+    id: "mbr_a10000000000000000000000",
     initials: "OE",
     name: "Owner Example",
     role: "Owner",
@@ -515,7 +515,7 @@ function teamInvite(overrides: Record<string, unknown> = {}) {
   return {
     email: "new@example.com",
     expires_label: "expires in 7 days",
-    id: "invite_a10000000000000000000000",
+    id: "inv_a10000000000000000000000",
     invited_label: "invited just now",
     role: "Viewer",
     role_value: "viewer",
@@ -581,7 +581,7 @@ function savedView(overrides: Record<string, unknown> = {}) {
     config: { filters: {}, search: "" },
     created_at: "2026-01-01T00:00:00.000Z",
     created_by_id: "usr_a10000000000000000000000",
-    id: "view_a10000000000000000000000",
+    id: "viw_a10000000000000000000000",
     name: "Top winners",
     ...overrides,
   };
@@ -590,7 +590,7 @@ function savedView(overrides: Record<string, unknown> = {}) {
 function competitor(overrides: Record<string, unknown> = {}) {
   return {
     domain: "competitor.com",
-    id: "comp_a10000000000000000000000",
+    id: "cmp_a10000000000000000000000",
     initials: "CO",
     label: "Competitor",
     ...overrides,
@@ -706,7 +706,7 @@ function migrationToken(overrides: Record<string, unknown> = {}) {
     created_at: "2026-01-01T00:00:00.000Z",
     created_by: { email: "owner@example.com", name: "Owner Example" },
     expires_at: "2026-01-08T00:00:00.000Z",
-    id: "mtok_a10000000000000000000000",
+    id: "ferry_a10000000000000000000000",
     scope: "full",
     single_use: true,
     ...overrides,
@@ -770,35 +770,35 @@ describe("help and top level parsing", () => {
   });
 });
 
-describe("public ID v2 boundary", () => {
+describe("public ID v3 boundary", () => {
   const projectId = "prj_a10000000000000000000000";
   const validUnknownKeywordId = "kw_z00000000000000000000000";
 
   it("uses the canonical global public ID prefix registry", () => {
     expect(PUBLIC_ID_PREFIXES).toEqual([
-      "alert",
+      "al",
+      "alr",
       "audit",
       "check",
-      "comp",
+      "cmp",
       "conn",
-      "hook",
-      "invite",
-      "job",
+      "dwh",
+      "ferry",
+      "imp",
+      "inv",
       "key",
       "kw",
-      "member",
-      "mtok",
-      "notif",
+      "mbr",
+      "ntf",
       "pat",
       "prj",
-      "rule",
-      "ses",
+      "sid",
       "sig",
-      "skw",
+      "svkw",
       "tag",
       "usr",
-      "view",
-      "webhook",
+      "viw",
+      "we",
     ]);
   });
 
@@ -820,7 +820,7 @@ describe("public ID v2 boundary", () => {
     expect(sdk.client.getKeyword).not.toHaveBeenCalled();
   });
 
-  it("passes an unknown but strict public ID v2 to the API", async () => {
+  it("passes an unknown but strict public ID v3 to the API", async () => {
     sdk.client.getKeyword.mockResolvedValueOnce(keyword({ id: validUnknownKeywordId }));
 
     const result = await runCli(
@@ -920,7 +920,7 @@ describe("config commands", () => {
 
     const get = await runCli(["config", "get", "--config", config], localDeps);
     expect(JSON.parse(get.stdout)).toMatchObject({
-      apiKey: "bsk_live...7890",
+      apiKey: "bsb_key_...7890",
       baseUrl: "https://eu.bisibility.com/api/v1",
     });
 
@@ -938,6 +938,22 @@ describe("config commands", () => {
     expect(result.exitCode).toBe(1);
     expect(result.stderr).toContain("Config key must be");
   });
+
+  it.each(["bsp_live_old", "bsk_live_old"])(
+    "rejects a legacy API credential before calling the API: %s",
+    async (legacyCredential) => {
+      const result = await runCli(
+        ["projects", "list"],
+        deps({ env: { BISIBILITY_API_KEY: legacyCredential } }),
+      );
+
+      expect(result).toMatchObject({
+        exitCode: 1,
+        stderr: expect.stringContaining("Legacy bsp_ and bsk_ credentials are not accepted."),
+      });
+      expect(sdk.client.listProjects).not.toHaveBeenCalled();
+    },
+  );
 });
 
 describe("keywords commands", () => {
@@ -1681,7 +1697,8 @@ describe("keywords commands", () => {
   });
 
   it("requires an API key for protected commands", async () => {
-    const result = await runCli(["keywords", "list"], deps({ env: {} }));
+    const homeDir = await mkdtemp(join(tmpdir(), "bisibility-cli-no-key-"));
+    const result = await runCli(["keywords", "list"], deps({ env: {}, homeDir }));
 
     expect(result.exitCode).toBe(1);
     expect(result.stderr).toContain("API key is required");
@@ -2241,7 +2258,7 @@ describe("projects commands", () => {
     );
 
     expect(result.exitCode).toBe(1);
-    expect(result.stderr).toContain("Created project ID must use a public ID v2");
+    expect(result.stderr).toContain("Created project ID must use a public ID v3");
     await expect(readFile(config, "utf8")).rejects.toMatchObject({ code: "ENOENT" });
   });
 
@@ -2436,7 +2453,7 @@ describe("projects commands", () => {
     const result = await runCli(["link"], deps({ cwd: dir, homeDir: dir }));
 
     expect(result.exitCode).toBe(1);
-    expect(result.stderr).toContain("Selected project ID must use a public ID v2");
+    expect(result.stderr).toContain("Selected project ID must use a public ID v3");
     await expect(readFile(join(dir, ".bisibility", "project.json"), "utf8")).rejects.toMatchObject({
       code: "ENOENT",
     });
@@ -2703,8 +2720,8 @@ describe("api-keys commands", () => {
   it("creates and revokes API keys", async () => {
     sdk.client.createApiKey.mockResolvedValueOnce({
       ...apiKeyResource({ id: "key_new000000000000000000000" }),
-      masked_value: "bsk_live_abcd******wxyz",
-      token: "bsk_live_secret_token",
+      masked_value: "bsb_key_live_abcd******wxyz",
+      token: "bsb_key_live_secret_token",
     });
     sdk.client.revokeApiKey.mockResolvedValueOnce(
       apiKeyResource({
@@ -2714,7 +2731,7 @@ describe("api-keys commands", () => {
     );
 
     const created = await runCli(["api-keys", "create", "--name", "CI key"], deps());
-    expect(created.stdout).toContain("bsk_live_secret_token");
+    expect(created.stdout).toContain("bsb_key_live_secret_token");
     expect(sdk.client.createApiKey).toHaveBeenCalledWith({ name: "CI key" });
 
     const revoked = await runCli(["api-keys", "revoke", "key_a10000000000000000000000"], deps());
@@ -2728,8 +2745,8 @@ describe("api-keys commands", () => {
     );
     sdk.client.createProjectApiKey.mockResolvedValueOnce({
       ...apiKeyResource({ id: "key_pnew00000000000000000000" }),
-      masked_value: "bsk_live_abcd******wxyz",
-      token: "bsk_live_project_token",
+      masked_value: "bsb_key_live_abcd******wxyz",
+      token: "bsb_key_live_project_token",
     });
 
     const listed = await runCli(
@@ -2746,7 +2763,7 @@ describe("api-keys commands", () => {
       ["api-keys", "create", "--project", "prj_a10000000000000000000000", "--name", "CI key"],
       deps(),
     );
-    expect(created.stdout).toContain("bsk_live_project_token");
+    expect(created.stdout).toContain("bsb_key_live_project_token");
     expect(sdk.client.createProjectApiKey).toHaveBeenCalledWith("prj_a10000000000000000000000", {
       name: "CI key",
     });
@@ -3211,9 +3228,10 @@ describe("signals commands", () => {
   });
 
   it("requires an API key for signals commands", async () => {
+    const homeDir = await mkdtemp(join(tmpdir(), "bisibility-cli-no-key-"));
     const result = await runCli(
       ["signals", "create", "--source", "deploy", "--type", "deploy.completed"],
-      deps({ env: {} }),
+      deps({ env: {}, homeDir }),
     );
 
     expect(result.exitCode).toBe(1);
@@ -3640,10 +3658,10 @@ describe("alerts commands", () => {
   it("lists alert rules across pages and triggered alerts", async () => {
     sdk.client.listAlertRules
       .mockResolvedValueOnce(
-        list([alertRule({ id: "rule_a10000000000000000000000" })], "next_alerts"),
+        list([alertRule({ id: "alr_a10000000000000000000000" })], "next_alerts"),
       )
       .mockResolvedValueOnce(
-        list([alertRule({ id: "rule_a20000000000000000000000", name: "SERP feature" })]),
+        list([alertRule({ id: "alr_a20000000000000000000000", name: "SERP feature" })]),
       );
     sdk.client.listTriggeredAlerts.mockResolvedValueOnce(list([triggeredAlert()]));
 
@@ -3735,7 +3753,7 @@ describe("alerts commands", () => {
       [
         "alerts",
         "update",
-        "rule_a10000000000000000000000",
+        "alr_a10000000000000000000000",
         "--input-json",
         updateInput,
         "--change-pct",
@@ -3745,7 +3763,7 @@ describe("alerts commands", () => {
       deps(),
     );
     expect(JSON.parse(updated.stdout)).toMatchObject({ name: "Updated rule" });
-    expect(sdk.client.updateAlertRule).toHaveBeenCalledWith("rule_a10000000000000000000000", {
+    expect(sdk.client.updateAlertRule).toHaveBeenCalledWith("alr_a10000000000000000000000", {
       channels: ["email"],
       change_pct: 25,
       condition_type: "change_pct",
@@ -3753,9 +3771,9 @@ describe("alerts commands", () => {
       target_type: "all",
     });
 
-    const deleted = await runCli(["alerts", "delete", "rule_a10000000000000000000000"], deps());
+    const deleted = await runCli(["alerts", "delete", "alr_a10000000000000000000000"], deps());
     expect(deleted.stdout).toContain("deleted  yes");
-    expect(sdk.client.deleteAlertRule).toHaveBeenCalledWith("rule_a10000000000000000000000");
+    expect(sdk.client.deleteAlertRule).toHaveBeenCalledWith("alr_a10000000000000000000000");
 
     const invalid = await runCli(["alerts", "create", "--condition", "threshold"], deps());
     expect(invalid.stderr).toContain("alerts create requires --name");
@@ -3772,7 +3790,7 @@ describe("alerts commands", () => {
       [
         "alerts",
         "mute",
-        "alert_a10000000000000000000000",
+        "al_a10000000000000000000000",
         "--project",
         "prj_a10000000000000000000000",
       ],
@@ -3782,7 +3800,7 @@ describe("alerts commands", () => {
     expect(muted.stdout).toContain("2026-07-29T10:00:00.000Z");
     expect(sdk.client.muteTriggeredAlert).toHaveBeenCalledWith(
       "prj_a10000000000000000000000",
-      "alert_a10000000000000000000000",
+      "al_a10000000000000000000000",
     );
 
     const read = await runCli(
@@ -3863,12 +3881,12 @@ describe("team commands", () => {
     sdk.client.listTeamInvites.mockResolvedValueOnce(list([teamInvite()]));
     sdk.client.createTeamInvite.mockResolvedValueOnce({
       expires_at: "2026-01-08T00:00:00.000Z",
-      id: "invite_new000000000000000000000",
-      invite_link: "https://bisibility.test/invite/invite_new000000000000000000000",
+      id: "inv_new000000000000000000000",
+      invite_link: "https://bisibility.test/invite/inv_new000000000000000000000",
     });
-    sdk.client.revokeTeamInvite.mockResolvedValueOnce({ id: "invite_a10000000000000000000000" });
+    sdk.client.revokeTeamInvite.mockResolvedValueOnce({ id: "inv_a10000000000000000000000" });
     sdk.client.revokeTeamInviteById.mockResolvedValueOnce({
-      id: "invite_global000000000000000000",
+      id: "inv_global000000000000000000",
     });
 
     const members = await runCli(
@@ -3885,7 +3903,7 @@ describe("team commands", () => {
       deps(),
     );
     expect(JSON.parse(invites.stdout).data[0]).toMatchObject({
-      id: "invite_a10000000000000000000000",
+      id: "inv_a10000000000000000000000",
     });
     expect(sdk.client.listTeamInvites).toHaveBeenCalledWith("prj_a10000000000000000000000", {
       limit: 50,
@@ -3903,7 +3921,7 @@ describe("team commands", () => {
       ],
       deps(),
     );
-    expect(created.stdout).toContain("invite_new000000000000000000000");
+    expect(created.stdout).toContain("inv_new000000000000000000000");
     expect(sdk.client.createTeamInvite).toHaveBeenCalledWith("prj_a10000000000000000000000", {
       email: "new@example.com",
       role: "viewer",
@@ -3913,7 +3931,7 @@ describe("team commands", () => {
       [
         "team",
         "revoke",
-        "invite_a10000000000000000000000",
+        "inv_a10000000000000000000000",
         "--project",
         "prj_a10000000000000000000000",
       ],
@@ -3921,22 +3939,22 @@ describe("team commands", () => {
     );
     expect(sdk.client.revokeTeamInvite).toHaveBeenCalledWith(
       "prj_a10000000000000000000000",
-      "invite_a10000000000000000000000",
+      "inv_a10000000000000000000000",
     );
 
-    await runCli(["team", "revoke", "invite_global000000000000000000", "--global"], deps());
-    expect(sdk.client.revokeTeamInviteById).toHaveBeenCalledWith("invite_global000000000000000000");
+    await runCli(["team", "revoke", "inv_global000000000000000000", "--global"], deps());
+    expect(sdk.client.revokeTeamInviteById).toHaveBeenCalledWith("inv_global000000000000000000");
   });
 
   it("updates and removes members and resends invites", async () => {
     sdk.client.updateTeamMemberRole.mockResolvedValueOnce({
-      id: "member_a10000000000000000000000",
+      id: "mbr_a10000000000000000000000",
       role: "admin",
     });
-    sdk.client.removeTeamMember.mockResolvedValueOnce({ id: "member_a20000000000000000000000" });
+    sdk.client.removeTeamMember.mockResolvedValueOnce({ id: "mbr_a20000000000000000000000" });
     sdk.client.resendTeamInvite.mockResolvedValueOnce({
       expires_at: "2026-07-29T10:00:00.000Z",
-      id: "invite_a10000000000000000000000",
+      id: "inv_a10000000000000000000000",
       invite_link: "https://bisibility.test/invite/new-token",
     });
 
@@ -3944,7 +3962,7 @@ describe("team commands", () => {
       [
         "team",
         "set-role",
-        "member_a10000000000000000000000",
+        "mbr_a10000000000000000000000",
         "--project",
         "prj_a10000000000000000000000",
         "--role",
@@ -3956,7 +3974,7 @@ describe("team commands", () => {
       [
         "team",
         "remove",
-        "member_a20000000000000000000000",
+        "mbr_a20000000000000000000000",
         "--project",
         "prj_a10000000000000000000000",
       ],
@@ -3966,7 +3984,7 @@ describe("team commands", () => {
       [
         "team",
         "resend-invite",
-        "invite_a10000000000000000000000",
+        "inv_a10000000000000000000000",
         "--project",
         "prj_a10000000000000000000000",
         "--json",
@@ -3975,34 +3993,34 @@ describe("team commands", () => {
     );
 
     expect(updated.stdout).toContain("admin");
-    expect(removed.stdout).toContain("member_a20000000000000000000000");
+    expect(removed.stdout).toContain("mbr_a20000000000000000000000");
     expect(JSON.parse(resent.stdout).invite_link).toContain("new-token");
     expect(sdk.client.updateTeamMemberRole).toHaveBeenCalledWith(
       "prj_a10000000000000000000000",
-      "member_a10000000000000000000000",
+      "mbr_a10000000000000000000000",
       {
         role: "admin",
       },
     );
     expect(sdk.client.removeTeamMember).toHaveBeenCalledWith(
       "prj_a10000000000000000000000",
-      "member_a20000000000000000000000",
+      "mbr_a20000000000000000000000",
     );
     expect(sdk.client.resendTeamInvite).toHaveBeenCalledWith(
       "prj_a10000000000000000000000",
-      "invite_a10000000000000000000000",
+      "inv_a10000000000000000000000",
     );
   });
 
   it("supports alternate team mutation output and validates roles", async () => {
     sdk.client.updateTeamMemberRole.mockResolvedValueOnce({
-      id: "member_a10000000000000000000000",
+      id: "mbr_a10000000000000000000000",
       role: "viewer",
     });
-    sdk.client.removeTeamMember.mockResolvedValueOnce({ id: "member_a20000000000000000000000" });
+    sdk.client.removeTeamMember.mockResolvedValueOnce({ id: "mbr_a20000000000000000000000" });
     sdk.client.resendTeamInvite.mockResolvedValueOnce({
       expires_at: "2026-07-29T10:00:00.000Z",
-      id: "invite_a10000000000000000000000",
+      id: "inv_a10000000000000000000000",
       invite_link: "https://bisibility.test/invite/new-token",
     });
 
@@ -4010,7 +4028,7 @@ describe("team commands", () => {
       [
         "team",
         "set-role",
-        "member_a10000000000000000000000",
+        "mbr_a10000000000000000000000",
         "--project",
         "prj_a10000000000000000000000",
         "--role",
@@ -4023,7 +4041,7 @@ describe("team commands", () => {
       [
         "team",
         "remove",
-        "member_a20000000000000000000000",
+        "mbr_a20000000000000000000000",
         "--project",
         "prj_a10000000000000000000000",
         "--json",
@@ -4034,7 +4052,7 @@ describe("team commands", () => {
       [
         "team",
         "resend-invite",
-        "invite_a10000000000000000000000",
+        "inv_a10000000000000000000000",
         "--project",
         "prj_a10000000000000000000000",
       ],
@@ -4044,7 +4062,7 @@ describe("team commands", () => {
       [
         "team",
         "set-role",
-        "member_a10000000000000000000000",
+        "mbr_a10000000000000000000000",
         "--project",
         "prj_a10000000000000000000000",
       ],
@@ -4054,7 +4072,7 @@ describe("team commands", () => {
       [
         "team",
         "set-role",
-        "member_a10000000000000000000000",
+        "mbr_a10000000000000000000000",
         "--project",
         "prj_a10000000000000000000000",
         "--role",
@@ -4066,7 +4084,7 @@ describe("team commands", () => {
       [
         "team",
         "promote",
-        "member_a10000000000000000000000",
+        "mbr_a10000000000000000000000",
         "--project",
         "prj_a10000000000000000000000",
       ],
@@ -4074,7 +4092,7 @@ describe("team commands", () => {
     );
 
     expect(JSON.parse(updated.stdout).role).toBe("viewer");
-    expect(JSON.parse(removed.stdout).id).toBe("member_a20000000000000000000000");
+    expect(JSON.parse(removed.stdout).id).toBe("mbr_a20000000000000000000000");
     expect(resent.stdout).toContain("new-token");
     expect(missingRole.stderr).toContain("Pass --role admin, member, or viewer");
     expect(invalidRole.stderr).toContain("--role must be admin, member, or viewer");
@@ -4276,7 +4294,7 @@ describe("views and competitors commands", () => {
   it("lists, creates, and deletes saved views", async () => {
     sdk.client.listSavedViews.mockResolvedValueOnce(list([savedView()]));
     sdk.client.createSavedView.mockResolvedValueOnce(
-      savedView({ id: "view_new000000000000000000000" }),
+      savedView({ id: "viw_new000000000000000000000" }),
     );
     sdk.client.deleteSavedView.mockResolvedValueOnce({ deleted: true });
     sdk.client.deleteSavedViewById.mockResolvedValueOnce({ deleted: false });
@@ -4301,7 +4319,7 @@ describe("views and competitors commands", () => {
       ],
       deps(),
     );
-    expect(created.stdout).toContain("view_new000000000000000000000");
+    expect(created.stdout).toContain("viw_new000000000000000000000");
     expect(sdk.client.createSavedView).toHaveBeenCalledWith("prj_a10000000000000000000000", {
       config: { filters: { tags: ["api"] }, search: "rank" },
       name: "API view",
@@ -4311,7 +4329,7 @@ describe("views and competitors commands", () => {
       [
         "views",
         "delete",
-        "view_a10000000000000000000000",
+        "viw_a10000000000000000000000",
         "--project",
         "prj_a10000000000000000000000",
       ],
@@ -4319,11 +4337,11 @@ describe("views and competitors commands", () => {
     );
     expect(sdk.client.deleteSavedView).toHaveBeenCalledWith(
       "prj_a10000000000000000000000",
-      "view_a10000000000000000000000",
+      "viw_a10000000000000000000000",
     );
 
-    await runCli(["views", "delete", "view_global000000000000000000", "--global"], deps());
-    expect(sdk.client.deleteSavedViewById).toHaveBeenCalledWith("view_global000000000000000000");
+    await runCli(["views", "delete", "viw_global000000000000000000", "--global"], deps());
+    expect(sdk.client.deleteSavedViewById).toHaveBeenCalledWith("viw_global000000000000000000");
   });
 
   it("lists, adds, and removes competitors", async () => {
@@ -4332,7 +4350,7 @@ describe("views and competitors commands", () => {
       meta: { markets: [], next_cursor: null, suggestions: [] },
     });
     sdk.client.addCompetitor.mockResolvedValueOnce(
-      competitor({ id: "comp_new000000000000000000000" }),
+      competitor({ id: "cmp_new000000000000000000000" }),
     );
     sdk.client.removeCompetitor.mockResolvedValueOnce({ removed: true });
     sdk.client.removeCompetitorById.mockResolvedValueOnce({ removed: false });
@@ -4355,7 +4373,7 @@ describe("views and competitors commands", () => {
       ],
       deps(),
     );
-    expect(added.stdout).toContain("comp_new000000000000000000000");
+    expect(added.stdout).toContain("cmp_new000000000000000000000");
     expect(sdk.client.addCompetitor).toHaveBeenCalledWith("prj_a10000000000000000000000", {
       domain: "competitor.com",
       label: "Competitor",
@@ -4365,7 +4383,7 @@ describe("views and competitors commands", () => {
       [
         "competitors",
         "remove",
-        "comp_a10000000000000000000000",
+        "cmp_a10000000000000000000000",
         "--project",
         "prj_a10000000000000000000000",
       ],
@@ -4373,11 +4391,11 @@ describe("views and competitors commands", () => {
     );
     expect(sdk.client.removeCompetitor).toHaveBeenCalledWith(
       "prj_a10000000000000000000000",
-      "comp_a10000000000000000000000",
+      "cmp_a10000000000000000000000",
     );
 
-    await runCli(["competitors", "remove", "comp_global000000000000000000", "--global"], deps());
-    expect(sdk.client.removeCompetitorById).toHaveBeenCalledWith("comp_global000000000000000000");
+    await runCli(["competitors", "remove", "cmp_global000000000000000000", "--global"], deps());
+    expect(sdk.client.removeCompetitorById).toHaveBeenCalledWith("cmp_global000000000000000000");
   });
 });
 
@@ -4442,11 +4460,11 @@ describe("notifications and tokens commands", () => {
     });
     sdk.client.mintMigrationToken.mockResolvedValueOnce(issuedMigrationToken());
     sdk.client.revokeMigrationToken.mockResolvedValueOnce({
-      id: "mtok_a10000000000000000000000",
+      id: "ferry_a10000000000000000000000",
       revoked_at: "2026-01-02T00:00:00.000Z",
     });
     sdk.client.revokeMigrationTokenById.mockResolvedValueOnce({
-      id: "mtok_global000000000000000000",
+      id: "ferry_global000000000000000000",
       revoked_at: "2026-01-02T00:00:00.000Z",
     });
 
@@ -4454,7 +4472,7 @@ describe("notifications and tokens commands", () => {
       ["tokens", "list", "--project", "prj_a10000000000000000000000"],
       deps(),
     );
-    expect(listed.stdout).toContain("mtok_a10000000000000000000000");
+    expect(listed.stdout).toContain("ferry_a10000000000000000000000");
     expect(sdk.client.listMigrationTokens).toHaveBeenCalledWith("prj_a10000000000000000000000", {
       limit: 50,
     });
@@ -4472,7 +4490,7 @@ describe("notifications and tokens commands", () => {
       [
         "tokens",
         "revoke",
-        "mtok_a10000000000000000000000",
+        "ferry_a10000000000000000000000",
         "--project",
         "prj_a10000000000000000000000",
       ],
@@ -4480,12 +4498,12 @@ describe("notifications and tokens commands", () => {
     );
     expect(sdk.client.revokeMigrationToken).toHaveBeenCalledWith(
       "prj_a10000000000000000000000",
-      "mtok_a10000000000000000000000",
+      "ferry_a10000000000000000000000",
     );
 
-    await runCli(["tokens", "revoke", "mtok_global000000000000000000", "--global"], deps());
+    await runCli(["tokens", "revoke", "ferry_global000000000000000000", "--global"], deps());
     expect(sdk.client.revokeMigrationTokenById).toHaveBeenCalledWith(
-      "mtok_global000000000000000000",
+      "ferry_global000000000000000000",
     );
 
     const invalid = await runCli(
@@ -4540,16 +4558,16 @@ describe("new command validation and JSON output", () => {
 
   it("prints JSON for new mutation and get paths", async () => {
     sdk.client.createAlertRule.mockResolvedValueOnce(
-      alertRule({ id: "rule_json00000000000000000000" }),
+      alertRule({ id: "alr_json00000000000000000000" }),
     );
     sdk.client.deleteAlertRule.mockResolvedValueOnce({ deleted: true });
     sdk.client.listTriggeredAlerts.mockResolvedValueOnce(list([triggeredAlert()]));
     sdk.client.createTeamInvite.mockResolvedValueOnce({
       expires_at: "2026-01-08T00:00:00.000Z",
-      id: "invite_json00000000000000000000",
-      invite_link: "https://bisibility.test/invite/invite_json00000000000000000000",
+      id: "inv_json00000000000000000000",
+      invite_link: "https://bisibility.test/invite/inv_json00000000000000000000",
     });
-    sdk.client.revokeTeamInvite.mockResolvedValueOnce({ id: "invite_json00000000000000000000" });
+    sdk.client.revokeTeamInvite.mockResolvedValueOnce({ id: "inv_json00000000000000000000" });
     sdk.client.listProviders.mockResolvedValueOnce(list([provider()]));
     sdk.client.connectProvider.mockResolvedValueOnce(
       providerConnection({ id: "conn_json00000000000000000000" }),
@@ -4562,11 +4580,11 @@ describe("new command validation and JSON output", () => {
     sdk.client.disconnectProvider.mockResolvedValueOnce({ ok: true });
     sdk.client.listSavedViews.mockResolvedValueOnce(list([savedView()]));
     sdk.client.createSavedView.mockResolvedValueOnce(
-      savedView({ id: "view_json00000000000000000000" }),
+      savedView({ id: "viw_json00000000000000000000" }),
     );
     sdk.client.deleteSavedView.mockResolvedValueOnce({ deleted: true });
     sdk.client.addCompetitor.mockResolvedValueOnce(
-      competitor({ id: "comp_json00000000000000000000" }),
+      competitor({ id: "cmp_json00000000000000000000" }),
     );
     sdk.client.removeCompetitor.mockResolvedValueOnce({ removed: true });
     sdk.client.getNotificationPreferences.mockResolvedValueOnce(notificationPreferences());
@@ -4578,10 +4596,10 @@ describe("new command validation and JSON output", () => {
       meta: { import_job: {}, next_cursor: null },
     });
     sdk.client.mintMigrationToken.mockResolvedValueOnce(
-      issuedMigrationToken({ id: "mtok_json00000000000000000000" }),
+      issuedMigrationToken({ id: "ferry_json00000000000000000000" }),
     );
     sdk.client.revokeMigrationToken.mockResolvedValueOnce({
-      id: "mtok_json00000000000000000000",
+      id: "ferry_json00000000000000000000",
       revoked_at: "2026-01-02T00:00:00.000Z",
     });
 
@@ -4601,10 +4619,10 @@ describe("new command validation and JSON output", () => {
       ],
       deps(),
     );
-    expect(JSON.parse(alertCreate.stdout)).toMatchObject({ id: "rule_json00000000000000000000" });
+    expect(JSON.parse(alertCreate.stdout)).toMatchObject({ id: "alr_json00000000000000000000" });
     expect(
       JSON.parse(
-        (await runCli(["alerts", "delete", "rule_json00000000000000000000", "--json"], deps()))
+        (await runCli(["alerts", "delete", "alr_json00000000000000000000", "--json"], deps()))
           .stdout,
       ),
     ).toMatchObject({ deleted: true });
@@ -4617,7 +4635,7 @@ describe("new command validation and JSON output", () => {
           )
         ).stdout,
       ).data[0],
-    ).toMatchObject({ id: "alert_a10000000000000000000000" });
+    ).toMatchObject({ id: "al_a10000000000000000000000" });
     expect(
       JSON.parse(
         (
@@ -4634,7 +4652,7 @@ describe("new command validation and JSON output", () => {
           )
         ).stdout,
       ),
-    ).toMatchObject({ id: "invite_json00000000000000000000" });
+    ).toMatchObject({ id: "inv_json00000000000000000000" });
     expect(
       JSON.parse(
         (
@@ -4642,7 +4660,7 @@ describe("new command validation and JSON output", () => {
             [
               "team",
               "revoke",
-              "invite_json00000000000000000000",
+              "inv_json00000000000000000000",
               "--project",
               "prj_a10000000000000000000000",
               "--json",
@@ -4651,7 +4669,7 @@ describe("new command validation and JSON output", () => {
           )
         ).stdout,
       ),
-    ).toMatchObject({ id: "invite_json00000000000000000000" });
+    ).toMatchObject({ id: "inv_json00000000000000000000" });
     expect(
       JSON.parse(
         (
@@ -4797,7 +4815,7 @@ describe("new command validation and JSON output", () => {
           )
         ).stdout,
       ).data[0],
-    ).toMatchObject({ id: "view_a10000000000000000000000" });
+    ).toMatchObject({ id: "viw_a10000000000000000000000" });
     expect(
       JSON.parse(
         (
@@ -4817,7 +4835,7 @@ describe("new command validation and JSON output", () => {
           )
         ).stdout,
       ),
-    ).toMatchObject({ id: "view_json00000000000000000000" });
+    ).toMatchObject({ id: "viw_json00000000000000000000" });
     expect(
       JSON.parse(
         (
@@ -4825,7 +4843,7 @@ describe("new command validation and JSON output", () => {
             [
               "views",
               "delete",
-              "view_json00000000000000000000",
+              "viw_json00000000000000000000",
               "--project",
               "prj_a10000000000000000000000",
               "--json",
@@ -4851,7 +4869,7 @@ describe("new command validation and JSON output", () => {
           )
         ).stdout,
       ),
-    ).toMatchObject({ id: "comp_json00000000000000000000" });
+    ).toMatchObject({ id: "cmp_json00000000000000000000" });
     expect(
       JSON.parse(
         (
@@ -4859,7 +4877,7 @@ describe("new command validation and JSON output", () => {
             [
               "competitors",
               "remove",
-              "comp_json00000000000000000000",
+              "cmp_json00000000000000000000",
               "--project",
               "prj_a10000000000000000000000",
               "--json",
@@ -4907,7 +4925,7 @@ describe("new command validation and JSON output", () => {
           )
         ).stdout,
       ).data[0],
-    ).toMatchObject({ id: "mtok_a10000000000000000000000" });
+    ).toMatchObject({ id: "ferry_a10000000000000000000000" });
     expect(
       JSON.parse(
         (
@@ -4917,7 +4935,7 @@ describe("new command validation and JSON output", () => {
           )
         ).stdout,
       ),
-    ).toMatchObject({ id: "mtok_json00000000000000000000" });
+    ).toMatchObject({ id: "ferry_json00000000000000000000" });
     expect(
       JSON.parse(
         (
@@ -4925,7 +4943,7 @@ describe("new command validation and JSON output", () => {
             [
               "tokens",
               "revoke",
-              "mtok_json00000000000000000000",
+              "ferry_json00000000000000000000",
               "--project",
               "prj_a10000000000000000000000",
               "--json",
@@ -4934,7 +4952,7 @@ describe("new command validation and JSON output", () => {
           )
         ).stdout,
       ),
-    ).toMatchObject({ id: "mtok_json00000000000000000000" });
+    ).toMatchObject({ id: "ferry_json00000000000000000000" });
 
     expect(sdk.client.testProviderConnection).toHaveBeenLastCalledWith(
       "prj_a10000000000000000000000",
@@ -5247,11 +5265,38 @@ describe("cloud import", () => {
   it("pushes a JSON export package through the SDK with a migration token", async () => {
     const dir = await mkdtemp(join(tmpdir(), "bisibility-cli-"));
     const file = join(dir, "dump.json");
-    const pkg = { keywords: [keyword()], rank_checks: [rankCheck()], version: 1 };
+    const pkg = {
+      alert_rules: [],
+      competitors: [],
+      exported_at: "2026-07-29T00:00:00.000Z",
+      keywords: [
+        {
+          device: "desktop",
+          id: "kw_a10000000000000000000000",
+          keyword: "rank tracker",
+          location: "United States",
+          rankingHistory: [
+            {
+              checkedAt: "2026-07-29T00:00:00.000Z",
+              position: 4,
+              previousPosition: 8,
+              rankingUrl: "https://example.com/page",
+            },
+          ],
+          tags: ["api"],
+          target_url: "https://example.com/page",
+        },
+      ],
+      notification_preferences: [],
+      project_id: "prj_a10000000000000000000000",
+      saved_views: [],
+      scope: "history",
+      version: 5,
+    };
     await writeFile(file, JSON.stringify(pkg));
     sdk.client.importCloudExport.mockResolvedValueOnce({
       counts: { keywords: 1 },
-      job_id: "job_a10000000000000000000000",
+      job_id: "imp_a10000000000000000000000",
       state: "done",
     });
 
@@ -5261,7 +5306,7 @@ describe("cloud import", () => {
     );
 
     expect(result.exitCode).toBe(0);
-    expect(result.stdout).toContain("job    job_a10000000000000000000000");
+    expect(result.stdout).toContain("job    imp_a10000000000000000000000");
     expect(result.stdout).toContain("state  done");
     // Cross-instance migration: the cloud host is targeted with the migration
     // token as the Bearer credential and the documented /api/v1 server prefix.
@@ -5276,7 +5321,20 @@ describe("cloud import", () => {
   it("previews a dry run without calling the SDK", async () => {
     const dir = await mkdtemp(join(tmpdir(), "bisibility-cli-"));
     const file = join(dir, "dump.json");
-    await writeFile(file, JSON.stringify({ keywords: [keyword()], rank_checks: [] }));
+    await writeFile(
+      file,
+      JSON.stringify({
+        alert_rules: [],
+        competitors: [],
+        exported_at: "2026-07-29T00:00:00.000Z",
+        keywords: [{ ...keyword(), keyword: "rank tracker", rankingHistory: [] }],
+        notification_preferences: [],
+        project_id: "prj_a10000000000000000000000",
+        saved_views: [],
+        scope: "history",
+        version: 5,
+      }),
+    );
 
     const result = await runCli(
       ["cloud", "import", file, "--token", "mig_token", "--dry-run"],
@@ -5306,10 +5364,25 @@ describe("cloud import", () => {
     expect(result.stderr).toContain("JSON export package object");
   });
 
+  it("rejects cloud import package v4 before calling the SDK", async () => {
+    const dir = await mkdtemp(join(tmpdir(), "bisibility-cli-"));
+    const file = join(dir, "dump-v4.json");
+    await writeFile(file, JSON.stringify({ keywords: [], version: 4 }));
+
+    const result = await runCli(
+      ["cloud", "import", file, "--token", "mig_token", "--dry-run"],
+      deps(),
+    );
+
+    expect(result.exitCode).toBe(1);
+    expect(result.stderr).toContain("Version 4 and older packages are not accepted.");
+    expect(sdk.client.importCloudExport).not.toHaveBeenCalled();
+  });
+
   it("requires a migration token and reports cloud import failures", async () => {
     const dir = await mkdtemp(join(tmpdir(), "bisibility-cli-"));
     const file = join(dir, "dump.json");
-    await writeFile(file, JSON.stringify({ keywords: [] }));
+    await writeFile(file, JSON.stringify({ keywords: [], version: 5 }));
 
     const missing = await runCli(["cloud", "import", file], deps({ env: {} }));
     expect(missing.exitCode).toBe(1);
@@ -5334,7 +5407,7 @@ describe("cloud import", () => {
     sdk.client.getCloudImportCompatibility.mockResolvedValueOnce({
       app_version: "1.2.3",
       latest_migration: "0042",
-      schema_versions_supported: [1, 2, 3],
+      schema_versions_supported: [5],
     });
 
     const result = await runCli(
@@ -5344,7 +5417,7 @@ describe("cloud import", () => {
 
     expect(result.exitCode).toBe(0);
     expect(result.stdout).toContain("app version       1.2.3");
-    expect(result.stdout).toContain("schema versions   1, 2, 3");
+    expect(result.stdout).toContain("schema versions   5");
     expect(sdk.BisibilityClient).toHaveBeenCalledWith({ baseUrl: "https://cloud.test/api/v1" });
   });
 });
@@ -5384,7 +5457,7 @@ describe("me commands", () => {
           id: "pat_a10000000000000000000000",
           last_used_at: null,
           name: "laptop",
-          prefix: "bsp_live_abcd",
+          prefix: "bsb_pat_live_abcd",
           revoked_at: null,
           scope: "read",
         },
@@ -5399,18 +5472,18 @@ describe("me commands", () => {
       expires_at: "2026-04-01T00:00:00.000Z",
       id: "pat_new000000000000000000000",
       last_used_at: null,
-      masked_value: "bsp_live_abcd******wxyz",
+      masked_value: "bsb_pat_live_abcd******wxyz",
       name: "ci",
-      prefix: "bsp_live_abcd",
+      prefix: "bsb_pat_live_abcd",
       revoked_at: null,
       scope: "write",
-      token: "bsp_live_secret",
+      token: "bsb_pat_live_secret",
     });
     const created = await runCli(
       ["me", "tokens", "create", "--name", "ci", "--scope", "write", "--expires", "90"],
       deps(),
     );
-    expect(created.stdout).toContain("bsp_live_secret");
+    expect(created.stdout).toContain("bsb_pat_live_secret");
     expect(sdk.client.createMyToken).toHaveBeenCalledWith({
       expires_in_days: 90,
       name: "ci",
@@ -5423,7 +5496,7 @@ describe("me commands", () => {
       id: "pat_a10000000000000000000000",
       last_used_at: null,
       name: "laptop",
-      prefix: "bsp_live_abcd",
+      prefix: "bsb_pat_live_abcd",
       revoked_at: "2026-02-01T00:00:00.000Z",
       scope: "read",
     });
@@ -5633,7 +5706,7 @@ describe("auth status", () => {
     sdk.client.createMyToken.mockResolvedValueOnce({
       expires_at: "2026-10-10T00:00:00.000Z",
       id: "pat_a10000000000000000000000",
-      token: "bsp_live_1234567890abcdef",
+      token: "bsb_pat_live_1234567890abcdef",
     });
 
     const result = await runCli(["auth", "login", "--config", config], {
@@ -5669,7 +5742,7 @@ describe("auth status", () => {
           JSON.stringify({
             expires_at: "2026-10-10T00:00:00.000Z",
             id: "pat_a10000000000000000000000",
-            token: "bsp_live_1234567890abcdef",
+            token: "bsb_pat_live_1234567890abcdef",
           }),
           { headers: { "Content-Type": "application/json" }, status: 201 },
         ),
@@ -5677,7 +5750,7 @@ describe("auth status", () => {
     sdk.client.createMyToken.mockResolvedValueOnce({
       expires_at: "2026-10-10T00:00:00.000Z",
       id: "pat_a10000000000000000000000",
-      token: "bsp_live_1234567890abcdef",
+      token: "bsb_pat_live_1234567890abcdef",
     });
 
     const result = await runCli(
@@ -5704,7 +5777,7 @@ describe("auth status", () => {
 
     expect(result.exitCode).toBe(0);
     expect(JSON.parse(await readFile(config, "utf8"))).toMatchObject({
-      apiKey: "bsp_live_1234567890abcdef",
+      apiKey: "bsb_pat_live_1234567890abcdef",
     });
     expect(oauth.loginWithPkce).toHaveBeenCalledWith(
       "https://cloud.test",
@@ -5717,7 +5790,7 @@ describe("auth status", () => {
     });
     expect(result.stdout).toContain("Authentication succeeded for https://cloud.test.");
     expect(result.stdout).toContain("pat_a10000000000000000000000");
-    expect(result.stdout).not.toContain("bsp_live_1234567890abcdef");
+    expect(result.stdout).not.toContain("bsb_pat_live_1234567890abcdef");
     expect(result.stderr).toBe(
       "Opening the default browser.\nWaiting for authorization at https://cloud.test.\n",
     );
@@ -5743,7 +5816,7 @@ describe("auth status", () => {
     sdk.client.createMyToken.mockResolvedValueOnce({
       expires_at: "2026-10-10T00:00:00.000Z",
       id: "pat_a10000000000000000000000",
-      token: "bsp_live_1234567890abcdef",
+      token: "bsb_pat_live_1234567890abcdef",
     });
 
     const login = runCli(
@@ -5771,7 +5844,7 @@ describe("auth status", () => {
     });
     expect(result.stderr).toBe("");
     expect(result.stdout).not.toContain("Authentication succeeded");
-    expect(result.stdout).not.toContain("bsp_live_1234567890abcdef");
+    expect(result.stdout).not.toContain("bsb_pat_live_1234567890abcdef");
   });
 
   it("maps SDK problem details during the OAuth token exchange", async () => {
@@ -5799,7 +5872,7 @@ describe("auth status", () => {
   it("clears the local PAT on logout without revoking it", async () => {
     const dir = await mkdtemp(join(tmpdir(), "bisibility-cli-logout-"));
     const config = join(dir, "config.json");
-    await writeFile(config, JSON.stringify({ apiKey: "bsp_live_1234567890abcdef" }));
+    await writeFile(config, JSON.stringify({ apiKey: "bsb_pat_live_1234567890abcdef" }));
 
     const result = await runCli(["auth", "logout", "--config", config], deps({ env: {} }));
 
@@ -5812,7 +5885,7 @@ describe("auth status", () => {
   it("revokes the current PAT only when logout receives --revoke", async () => {
     const dir = await mkdtemp(join(tmpdir(), "bisibility-cli-logout-revoke-"));
     const config = join(dir, "config.json");
-    await writeFile(config, JSON.stringify({ apiKey: "bsp_live_1234567890abcdef" }));
+    await writeFile(config, JSON.stringify({ apiKey: "bsb_pat_live_1234567890abcdef" }));
     sdk.client.revokeMyToken.mockResolvedValueOnce({ id: "pat_a10000000000000000000000" });
 
     const result = await runCli(
@@ -5829,11 +5902,11 @@ describe("auth status", () => {
   it("does not claim to log out an environment-provided credential", async () => {
     const dir = await mkdtemp(join(tmpdir(), "bisibility-cli-logout-env-"));
     const config = join(dir, "config.json");
-    await writeFile(config, JSON.stringify({ apiKey: "bsp_live_stored1234567890" }));
+    await writeFile(config, JSON.stringify({ apiKey: "bsb_pat_live_stored1234567890" }));
 
     const result = await runCli(
       ["auth", "logout", "--config", config],
-      deps({ env: { BISIBILITY_API_KEY: "bsp_live_environment123456" } }),
+      deps({ env: { BISIBILITY_API_KEY: "bsb_pat_live_environment123456" } }),
     );
 
     expect(result).toMatchObject({
@@ -5843,14 +5916,14 @@ describe("auth status", () => {
     expect(sdk.client.revokeMyToken).not.toHaveBeenCalled();
     expect(JSON.parse(await readFile(config, "utf8"))).toHaveProperty(
       "apiKey",
-      "bsp_live_stored1234567890",
+      "bsb_pat_live_stored1234567890",
     );
   });
 
   it("refuses to revoke a project API key through auth logout", async () => {
     const dir = await mkdtemp(join(tmpdir(), "bisibility-cli-logout-project-key-"));
     const config = join(dir, "config.json");
-    await writeFile(config, JSON.stringify({ apiKey: "bsk_live_1234567890abcdef" }));
+    await writeFile(config, JSON.stringify({ apiKey: "bsb_key_live_1234567890abcdef" }));
 
     const result = await runCli(
       ["auth", "logout", "--revoke", "--config", config],
@@ -5864,7 +5937,7 @@ describe("auth status", () => {
     expect(sdk.client.revokeMyToken).not.toHaveBeenCalled();
     expect(JSON.parse(await readFile(config, "utf8"))).toHaveProperty(
       "apiKey",
-      "bsk_live_1234567890abcdef",
+      "bsb_key_live_1234567890abcdef",
     );
   });
 
@@ -5886,7 +5959,7 @@ describe("auth status", () => {
 
     const result = await runCli(
       ["auth", "status", "--json"],
-      deps({ env: { BISIBILITY_API_KEY: "bsp_live_1234567890abcdef" } }),
+      deps({ env: { BISIBILITY_API_KEY: "bsb_pat_live_1234567890abcdef" } }),
     );
 
     expect(JSON.parse(result.stdout)).toMatchObject({
@@ -5916,7 +5989,8 @@ describe("auth status", () => {
   });
 
   it("can report auth settings without network calls", async () => {
-    const result = await runCli(["auth", "status", "--offline"], deps({ env: {} }));
+    const homeDir = await mkdtemp(join(tmpdir(), "bisibility-cli-no-key-"));
+    const result = await runCli(["auth", "status", "--offline"], deps({ env: {}, homeDir }));
 
     expect(result.exitCode).toBe(0);
     expect(JSON.parse(result.stdout)).toMatchObject({

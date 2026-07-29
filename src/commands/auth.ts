@@ -1,6 +1,12 @@
 import { hostname } from "node:os";
 import { BisibilityApiError, BisibilityClient } from "@bisibility/sdk";
-import { loadSettings, readConfigFile, redactSecret, writeConfigFile } from "../config.js";
+import {
+  assertApiCredential,
+  loadSettings,
+  readConfigFile,
+  redactSecret,
+  writeConfigFile,
+} from "../config.js";
 import { renderJson, renderKeyValues } from "../format.js";
 import { loginWithPkce } from "../oauth.js";
 import { type ParsedArgs, getStringFlag, hasFlag } from "../parser.js";
@@ -79,7 +85,7 @@ export async function commandAuthLogout(ctx: CommandContext) {
 
   if (shouldRevoke) {
     if (!settings.apiKey) throw new CliError("No API credential is configured.");
-    if (!settings.apiKey.startsWith("bsp_")) {
+    if (!settings.apiKey.startsWith("bsb_pat_live_")) {
       throw new CliError("--revoke requires a personal access token.");
     }
     await new BisibilityClient({
@@ -117,9 +123,12 @@ export async function commandAuthStatus(ctx: CommandContext) {
   if (hasFlag(ctx.args, "offline")) {
     return renderJson({ ...base, online: false });
   }
+  if (settings.apiKey) {
+    assertApiCredential(settings.apiKey);
+  }
 
   const health = await client.getHealth();
-  const personal = settings.apiKey?.startsWith("bsp_") ?? false;
+  const personal = settings.apiKey?.startsWith("bsb_pat_live_") ?? false;
   const me = personal ? await client.getMe() : null;
   let projects: Array<{ domain: string; id: string; name: string }> = me?.projects ?? [];
   if (!me && settings.apiKey) {

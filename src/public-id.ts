@@ -1,29 +1,29 @@
 import { type ParsedArgs, getStringFlag, getStringFlags } from "./parser.js";
 
 export const PUBLIC_ID_PREFIXES = [
-  "alert",
+  "al",
+  "alr",
   "audit",
   "check",
-  "comp",
+  "cmp",
   "conn",
-  "hook",
-  "invite",
-  "job",
+  "dwh",
+  "ferry",
+  "imp",
+  "inv",
   "key",
   "kw",
-  "member",
-  "mtok",
-  "notif",
+  "mbr",
+  "ntf",
   "pat",
   "prj",
-  "rule",
-  "ses",
+  "sid",
   "sig",
-  "skw",
+  "svkw",
   "tag",
   "usr",
-  "view",
-  "webhook",
+  "viw",
+  "we",
 ] as const;
 
 export type PublicIdPrefix = (typeof PUBLIC_ID_PREFIXES)[number];
@@ -33,13 +33,13 @@ const suffixPattern = "[a-z][a-z0-9]{23}";
 const anyPrefixPattern = PUBLIC_ID_PREFIXES.join("|");
 const rawCuidPattern = /^c[a-z0-9]{24}$/;
 
-export const PUBLIC_ID_V2_PATTERN = new RegExp(`^(?:${anyPrefixPattern})_${suffixPattern}$`);
+export const PUBLIC_ID_V3_PATTERN = new RegExp(`^(?:${anyPrefixPattern})_${suffixPattern}$`);
 
 function isPublicIdOfType<Prefix extends PublicIdPrefix>(
   value: string,
   prefix: Prefix,
 ): value is PublicIdForPrefix<Prefix> {
-  return PUBLIC_ID_V2_PATTERN.test(value) && value.startsWith(`${prefix}_`);
+  return PUBLIC_ID_V3_PATTERN.test(value) && value.startsWith(`${prefix}_`);
 }
 
 export function assertPublicId<Prefix extends PublicIdPrefix>(
@@ -51,10 +51,10 @@ export function assertPublicId<Prefix extends PublicIdPrefix>(
     return value;
   }
   if (rawCuidPattern.test(value)) {
-    throw new Error(`${label} must use a public ID v2. Raw or legacy IDs are not accepted.`);
+    throw new Error(`${label} must use a public ID v3. Raw or legacy IDs are not accepted.`);
   }
   throw new Error(
-    `${label} must be a ${prefix}_ public ID v2 with a lowercase 24-character suffix.`,
+    `${label} must be a ${prefix}_ public ID v3 with a lowercase 24-character suffix.`,
   );
 }
 
@@ -106,7 +106,7 @@ function assertProjectReference(value: string | undefined, label: string) {
   if (value === undefined) {
     return;
   }
-  if (PUBLIC_ID_V2_PATTERN.test(value)) {
+  if (PUBLIC_ID_V3_PATTERN.test(value)) {
     assertPublicId(value, "prj", label);
     return;
   }
@@ -171,9 +171,9 @@ export function validatePublicIdArgs(args: ParsedArgs) {
   }
 
   if (command === "alerts") {
-    if (action === "mute") assertOptionalPosition(positionalId, "alert", "Triggered alert ID");
+    if (action === "mute") assertOptionalPosition(positionalId, "al", "Triggered alert ID");
     if (action === "update" || action === "delete") {
-      assertOptionalPosition(positionalId, "rule", "Alert rule ID");
+      assertOptionalPosition(positionalId, "alr", "Alert rule ID");
     }
     return;
   }
@@ -195,7 +195,7 @@ export function validatePublicIdArgs(args: ParsedArgs) {
   }
 
   if (command === "competitors" && action === "remove") {
-    assertOptionalPosition(positionalId, "comp", "Competitor ID");
+    assertOptionalPosition(positionalId, "cmp", "Competitor ID");
     return;
   }
 
@@ -242,20 +242,20 @@ export function validatePublicIdArgs(args: ParsedArgs) {
 
   if (command === "team") {
     if (action === "revoke" || action === "resend-invite") {
-      assertOptionalPosition(positionalId, "invite", "Team invite ID");
+      assertOptionalPosition(positionalId, "inv", "Team invite ID");
     }
     if (action === "set-role" || action === "remove") {
-      assertOptionalPosition(positionalId, "member", "Team member ID");
+      assertOptionalPosition(positionalId, "mbr", "Team member ID");
     }
     return;
   }
 
   if (command === "tokens" && action === "revoke") {
-    assertOptionalPosition(positionalId, "mtok", "Migration token ID");
+    assertOptionalPosition(positionalId, "ferry", "Migration token ID");
     return;
   }
 
   if (command === "views" && action === "delete") {
-    assertOptionalPosition(positionalId, "view", "Saved view ID");
+    assertOptionalPosition(positionalId, "viw", "Saved view ID");
   }
 }

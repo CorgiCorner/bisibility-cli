@@ -30,6 +30,11 @@ export function parseImportPackage(raw: string, fileName: string): CloudImportPa
       }.`,
     );
   }
+  if ((parsed as { version?: unknown }).version !== 5) {
+    throw new CliError(
+      `Cloud import expects a version 5 export package in ${fileName}. Version 4 and older packages are not accepted.`,
+    );
+  }
   return parsed as CloudImportPackage;
 }
 
@@ -39,6 +44,23 @@ export function arrayLength(value: unknown, key: string) {
   }
   const candidate = (value as Record<string, unknown>)[key];
   return Array.isArray(candidate) ? candidate.length : null;
+}
+
+export function rankHistoryLength(value: unknown) {
+  if (!value || typeof value !== "object") {
+    return null;
+  }
+  const keywords = (value as Record<string, unknown>).keywords;
+  if (!Array.isArray(keywords)) {
+    return null;
+  }
+  return keywords.reduce((total, keyword) => {
+    if (!keyword || typeof keyword !== "object") {
+      return total;
+    }
+    const history = (keyword as Record<string, unknown>).rankingHistory;
+    return total + (Array.isArray(history) ? history.length : 0);
+  }, 0);
 }
 
 function cloudClient(ctx: CommandContext, cloudUrl: string, migrationToken?: string) {
@@ -69,7 +91,7 @@ export async function commandCloudImport(ctx: CommandContext, rest: readonly str
     cloud_url: cloudApiBaseUrl(settings.cloudUrl),
     file: basename(file),
     keyword_count: arrayLength(pkg, "keywords"),
-    rank_check_count: arrayLength(pkg, "rank_checks"),
+    rank_check_count: rankHistoryLength(pkg),
   };
 
   if (hasFlag(ctx.args, "dry-run")) {

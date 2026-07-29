@@ -800,12 +800,12 @@ Options:
   --json                       Print JSON
 
 Login opens the Bisibility authorization page, completes OAuth Authorization
-Code with PKCE on a loopback callback, and stores the resulting bsp_live_ token
+Code with PKCE on a loopback callback, and stores the resulting bsb_pat_live_ token
 as plaintext JSON in the config file. On POSIX systems, the default config
 directory uses mode 0700 and the file uses mode 0600; Windows relies on inherited
 user-profile ACLs. On a headless machine, create a token at
 https://bisibility.com/app/account/security and run
-bisibility config set apiKey bsp_live_....
+bisibility config set apiKey bsb_pat_live_....
 
 Logout removes a credential stored in the config without revoking it. Pass
 --revoke to revoke the active personal access token on the server as well.

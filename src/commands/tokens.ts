@@ -71,7 +71,7 @@ export async function commandTokens(ctx: CommandContext, rest: readonly string[]
   if (action === "revoke") {
     const tokenId = assertPublicId(
       required(rest[1], "Pass a migration token ID."),
-      "mtok",
+      "ferry",
       "Migration token ID",
     );
     const result = hasFlag(ctx.args, "global")

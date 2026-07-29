@@ -55,7 +55,7 @@ export async function commandViews(ctx: CommandContext, rest: readonly string[])
   if (action === "delete") {
     const viewId = assertPublicId(
       required(rest[1], "Pass a saved view ID."),
-      "view",
+      "viw",
       "Saved view ID",
     );
     const result = hasFlag(ctx.args, "global")

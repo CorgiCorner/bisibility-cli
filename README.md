@@ -86,7 +86,7 @@ On a headless machine, create a PAT at
 [bisibility.com/app/account/security](https://bisibility.com/app/account/security), then store it:
 
 ```sh
-bisibility config set apiKey bsp_live_...
+bisibility config set apiKey bsb_pat_live_...
 bisibility config set baseUrl https://eu.bisibility.com/api/v1
 bisibility config get
 ```
@@ -94,7 +94,7 @@ bisibility config get
 Environment variables take precedence over stored values:
 
 ```sh
-export BISIBILITY_API_KEY=bsk_live_...
+export BISIBILITY_API_KEY=bsb_key_live_...
 export BISIBILITY_BASE_URL=https://eu.bisibility.com/api/v1
 ```
 
@@ -123,7 +123,7 @@ For headless automation, provide a personal or project credential directly and s
 URLs in the environment:
 
 ```sh
-export BISIBILITY_API_KEY=bsp_live_...
+export BISIBILITY_API_KEY=bsb_pat_live_...
 export BISIBILITY_BASE_URL=https://rank.example.com/api/v1
 export BISIBILITY_CLOUD_URL=https://rank.example.com
 
@@ -158,7 +158,7 @@ Prefer environment variables in managed CI environments.
 
 ## Public IDs
 
-Resource IDs use public ID v2: a lowercase resource prefix, an underscore, and a 24-character
+Resource IDs use public ID v3: a lowercase resource prefix, an underscore, and a 24-character
 lowercase alphanumeric suffix. For example:
 
 - project: `prj_a1b2c3d4e5f6g7h8j9k0m2n3`

@@ -1,5 +1,6 @@
 import {
   type ConfigFile,
+  assertApiCredential,
   defaultConfigPath,
   loadSettings,
   normalizeConfigKey,
@@ -39,6 +40,9 @@ export async function commandConfig(ctx: CommandContext, rest: readonly string[]
     const value = required(rest[2], "Pass a config value.");
     if (key === "projectId") {
       assertPublicId(value, "prj", "projectId");
+    }
+    if (key === "apiKey") {
+      assertApiCredential(value);
     }
     const next: ConfigFile = { ...config, [key]: value };
     const path = await writeConfigFile(ctx.args, next, ctx.deps);

@@ -1,5 +1,10 @@
 # Changelog
 
+## [0.2.0] - 2026-07-29
+
+- Breaking: require public ID v3 prefixes and `bsb_key_*` or `bsb_pat_live_` credentials.
+  Public ID v2 values and legacy `bsk_*` or `bsp_*` credentials are no longer accepted.
+
 ## [0.1.2] - 2026-07-29
 
 - Managed Cloud API requests now use the direct EU endpoint, preventing OAuth login from failing

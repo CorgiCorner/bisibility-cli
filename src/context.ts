@@ -20,7 +20,9 @@ import type {
 import { BisibilityClient } from "@bisibility/sdk";
 import {
   type ConfigDeps,
+  assertApiCredential,
   findProjectLink,
+  isApiCredential,
   loadSettings,
   readConfigFile,
   writeConfigFile,
@@ -182,11 +184,18 @@ export async function settingsAndClient(ctx: CommandContext, requiresApiKey = tr
       "API key is required. Set BISIBILITY_API_KEY or run bisibility config set apiKey <key>.",
     );
   }
+  if (requiresApiKey && settings.apiKey) {
+    assertApiCredential(settings.apiKey);
+  }
+  const apiKey =
+    settings.apiKey && (requiresApiKey || isApiCredential(settings.apiKey))
+      ? settings.apiKey
+      : undefined;
   const projectId = settings.projectId
     ? assertPublicId(settings.projectId, "prj", "Configured project ID")
     : undefined;
   const client = new BisibilityClient({
-    ...(settings.apiKey ? { apiKey: settings.apiKey } : {}),
+    ...(apiKey ? { apiKey } : {}),
     baseUrl: settings.baseUrl,
     ...(projectId ? { projectId } : {}),
   });

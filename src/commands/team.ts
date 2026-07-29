@@ -91,7 +91,7 @@ export async function commandTeam(ctx: CommandContext, rest: readonly string[]) 
   }
 
   if (action === "revoke") {
-    const inviteId = assertPublicId(required(rest[1], "Pass an invite ID."), "invite", "Invite ID");
+    const inviteId = assertPublicId(required(rest[1], "Pass an invite ID."), "inv", "Invite ID");
     const result = hasFlag(ctx.args, "global")
       ? await client.revokeTeamInviteById(inviteId)
       : await client.revokeTeamInvite(
@@ -104,7 +104,7 @@ export async function commandTeam(ctx: CommandContext, rest: readonly string[]) 
   }
 
   if (action === "set-role") {
-    const memberId = assertPublicId(required(rest[1], "Pass a member ID."), "member", "Member ID");
+    const memberId = assertPublicId(required(rest[1], "Pass a member ID."), "mbr", "Member ID");
     const projectId = await resolveProjectId(client, ctx, settings.projectId);
     const result = await client.updateTeamMemberRole(projectId, memberId, {
       role: requiredMemberRole(ctx.args),
@@ -118,7 +118,7 @@ export async function commandTeam(ctx: CommandContext, rest: readonly string[]) 
   }
 
   if (action === "remove") {
-    const memberId = assertPublicId(required(rest[1], "Pass a member ID."), "member", "Member ID");
+    const memberId = assertPublicId(required(rest[1], "Pass a member ID."), "mbr", "Member ID");
     const projectId = await resolveProjectId(client, ctx, settings.projectId);
     const result = await client.removeTeamMember(projectId, memberId);
     return hasFlag(ctx.args, "json")
@@ -127,7 +127,7 @@ export async function commandTeam(ctx: CommandContext, rest: readonly string[]) 
   }
 
   if (action === "resend-invite") {
-    const inviteId = assertPublicId(required(rest[1], "Pass an invite ID."), "invite", "Invite ID");
+    const inviteId = assertPublicId(required(rest[1], "Pass an invite ID."), "inv", "Invite ID");
     const projectId = await resolveProjectId(client, ctx, settings.projectId);
     const result = await client.resendTeamInvite(projectId, inviteId);
     return hasFlag(ctx.args, "json")

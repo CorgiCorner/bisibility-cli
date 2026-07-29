@@ -49,6 +49,20 @@ export type ConfigDeps = {
 };
 
 const configKeys = new Set(["apiKey", "baseUrl", "cloudUrl", "projectId"]);
+const API_CREDENTIAL_PREFIXES = ["bsb_key_live_", "bsb_key_test_", "bsb_pat_live_"] as const;
+
+export function isApiCredential(value: string) {
+  return API_CREDENTIAL_PREFIXES.some((prefix) => value.startsWith(prefix));
+}
+
+export function assertApiCredential(value: string) {
+  if (isApiCredential(value)) {
+    return value;
+  }
+  throw new Error(
+    "API credential must use bsb_key_live_, bsb_key_test_, or bsb_pat_live_. Legacy bsp_ and bsk_ credentials are not accepted.",
+  );
+}
 
 function isNodeError(error: unknown): error is NodeJS.ErrnoException {
   return error instanceof Error && "code" in error;

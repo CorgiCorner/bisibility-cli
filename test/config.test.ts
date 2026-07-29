@@ -77,7 +77,7 @@ describe("config helpers", () => {
       const homeDir = await mkdtemp(join(tmpdir(), "bisibility-permissions-"));
       const path = await writeConfigFile(
         parseArgv([]),
-        { apiKey: "bsk_live_test" },
+        { apiKey: "bsb_key_live_test" },
         {
           env: {},
           homeDir,

@@ -60,7 +60,7 @@ export async function commandCompetitors(ctx: CommandContext, rest: readonly str
   if (action === "remove") {
     const competitorId = assertPublicId(
       required(rest[1], "Pass a competitor ID."),
-      "comp",
+      "cmp",
       "Competitor ID",
     );
     const result = hasFlag(ctx.args, "global")

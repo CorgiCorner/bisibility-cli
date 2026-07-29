@@ -69,7 +69,7 @@ export async function commandAlerts(ctx: CommandContext, rest: readonly string[]
   if (action === "mute") {
     const alertId = assertPublicId(
       required(rest[1], "Pass a triggered alert ID."),
-      "alert",
+      "al",
       "Triggered alert ID",
     );
     const projectId = await resolveProjectId(client, ctx, settings.projectId);
@@ -108,7 +108,7 @@ export async function commandAlerts(ctx: CommandContext, rest: readonly string[]
   if (action === "update") {
     const ruleId = assertPublicId(
       required(rest[1], "Pass an alert rule ID."),
-      "rule",
+      "alr",
       "Alert rule ID",
     );
     const input = alertRuleInput(ctx.args, "alerts update") as UpdateAlertRuleInput;
@@ -127,7 +127,7 @@ export async function commandAlerts(ctx: CommandContext, rest: readonly string[]
   if (action === "delete") {
     const ruleId = assertPublicId(
       required(rest[1], "Pass an alert rule ID."),
-      "rule",
+      "alr",
       "Alert rule ID",
     );
     const result = await client.deleteAlertRule(ruleId);
