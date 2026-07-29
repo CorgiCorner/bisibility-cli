@@ -56,6 +56,21 @@ describe("config helpers", () => {
     });
   });
 
+  it("uses the managed OAuth host and direct EU API host by default", async () => {
+    const homeDir = await mkdtemp(join(tmpdir(), "bisibility-defaults-"));
+
+    const settings = await loadSettings(parseArgv([]), {
+      cwd: homeDir,
+      env: {},
+      homeDir,
+    });
+
+    expect(settings).toMatchObject({
+      baseUrl: "https://eu.bisibility.com/api/v1",
+      cloudUrl: "https://bisibility.com",
+    });
+  });
+
   it.runIf(process.platform !== "win32")(
     "creates the default config directory as 0700 and config file as 0600",
     async () => {
@@ -221,6 +236,7 @@ describe("config helpers", () => {
     expect(normalizeConfigKey("other")).toBeNull();
     expect(redactSecret(undefined)).toBeNull();
     expect(redactSecret("short")).toBe("configured");
+    expect(cloudUrlFromBaseUrl("https://eu.bisibility.com/api/v1")).toBe("https://bisibility.com");
     expect(cloudUrlFromBaseUrl("https://host.test/api/v1")).toBe("https://host.test");
     expect(cloudUrlFromBaseUrl("not a url")).toBe("https://bisibility.com");
   });

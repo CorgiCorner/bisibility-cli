@@ -5,7 +5,7 @@ import type { ParsedArgs } from "./parser.js";
 import { getStringFlag } from "./parser.js";
 import { type PublicIdForPrefix, assertPublicId } from "./public-id.js";
 
-export const DEFAULT_BASE_URL = "https://bisibility.com/api/v1";
+export const DEFAULT_BASE_URL = "https://eu.bisibility.com/api/v1";
 export const DEFAULT_CLOUD_URL = "https://bisibility.com";
 export const LOCAL_PROJECT_DIRECTORY = ".bisibility";
 export const LOCAL_PROJECT_FILE = "project.json";
@@ -292,6 +292,9 @@ export function redactSecret(value: string | undefined) {
 
 export function cloudUrlFromBaseUrl(baseUrl: string) {
   try {
+    if (baseUrl.replace(/\/$/, "") === DEFAULT_BASE_URL) {
+      return DEFAULT_CLOUD_URL;
+    }
     const url = new URL(baseUrl);
     if (url.pathname.endsWith("/api/v1")) {
       url.pathname = url.pathname.slice(0, -"/api/v1".length) || "/";

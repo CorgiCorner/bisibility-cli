@@ -63,7 +63,7 @@ The CLI checks credentials in this order:
 1. `BISIBILITY_API_KEY`
 2. the config file
 
-The API base URL defaults to `https://bisibility.com/api/v1`.
+The API base URL defaults to `https://eu.bisibility.com/api/v1`.
 
 For Bisibility Cloud, use OAuth Authorization Code with PKCE:
 
@@ -87,7 +87,7 @@ On a headless machine, create a PAT at
 
 ```sh
 bisibility config set apiKey bsp_live_...
-bisibility config set baseUrl https://bisibility.com/api/v1
+bisibility config set baseUrl https://eu.bisibility.com/api/v1
 bisibility config get
 ```
 
@@ -95,7 +95,7 @@ Environment variables take precedence over stored values:
 
 ```sh
 export BISIBILITY_API_KEY=bsk_live_...
-export BISIBILITY_BASE_URL=https://bisibility.com/api/v1
+export BISIBILITY_BASE_URL=https://eu.bisibility.com/api/v1
 ```
 
 ## Self-hosted authentication

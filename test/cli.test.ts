@@ -921,7 +921,7 @@ describe("config commands", () => {
     const get = await runCli(["config", "get", "--config", config], localDeps);
     expect(JSON.parse(get.stdout)).toMatchObject({
       apiKey: "bsk_live...7890",
-      baseUrl: "https://bisibility.com/api/v1",
+      baseUrl: "https://eu.bisibility.com/api/v1",
     });
 
     const unset = await runCli(["config", "unset", "apiKey", "--config", config], localDeps);
@@ -5623,6 +5623,35 @@ describe("CLI hardening", () => {
 });
 
 describe("auth status", () => {
+  it("uses the managed OAuth host and direct EU API host by default", async () => {
+    const dir = await mkdtemp(join(tmpdir(), "bisibility-cli-default-login-"));
+    const config = join(dir, "config.json");
+    oauth.loginWithPkce.mockResolvedValueOnce({
+      accessToken: "oauth_access",
+      authorizeUrl: "https://bisibility.com/authorize",
+    });
+    sdk.client.createMyToken.mockResolvedValueOnce({
+      expires_at: "2026-10-10T00:00:00.000Z",
+      id: "pat_a10000000000000000000000",
+      token: "bsp_live_1234567890abcdef",
+    });
+
+    const result = await runCli(["auth", "login", "--config", config], {
+      cwd: dir,
+      env: {},
+      homeDir: dir,
+    });
+
+    expect(result.exitCode).toBe(0);
+    expect(oauth.loginWithPkce).toHaveBeenCalledWith("https://bisibility.com", expect.any(Object));
+    expect(sdk.BisibilityClient).toHaveBeenCalledWith(
+      expect.objectContaining({
+        apiKey: "oauth_access",
+        baseUrl: "https://eu.bisibility.com/api/v1",
+      }),
+    );
+  });
+
   it("logs in through PKCE exchange and stores the reveal-once PAT", async () => {
     const dir = await mkdtemp(join(tmpdir(), "bisibility-cli-login-"));
     const config = join(dir, "config.json");
