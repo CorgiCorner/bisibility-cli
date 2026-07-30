@@ -1,11 +1,23 @@
 {
   "name": "@bisibility/cli",
-  "version": "0.2.0",
-  "description": "Command line interface for the Bisibility REST API.",
+  "version": "0.2.1",
+  "description": "Command-line client for Bisibility - run rank checks and read ranking history from your terminal.",
   "type": "module",
   "license": "Apache-2.0",
   "author": "Corgi Corner",
-  "keywords": ["api-client", "bisibility", "cli", "rank-tracking", "seo", "typescript"],
+  "keywords": [
+    "api-client",
+    "bisibility",
+    "cli",
+    "command-line",
+    "nodejs",
+    "rank-tracker",
+    "rank-tracking",
+    "seo",
+    "seo-tools",
+    "serp",
+    "typescript"
+  ],
   "homepage": "https://bisibility.com",
   "bugs": {
     "url": "https://github.com/CorgiCorner/bisibility-cli/issues"

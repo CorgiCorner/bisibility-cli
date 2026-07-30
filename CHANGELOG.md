@@ -1,5 +1,9 @@
 # Changelog
 
+## [0.2.1] - 2026-07-30
+
+- Improved package metadata to describe the CLI's rank-check and ranking-history commands.
+
 ## [0.2.0] - 2026-07-29
 
 - Breaking: require public ID v3 prefixes and `bsb_key_*` or `bsb_pat_live_` credentials.
