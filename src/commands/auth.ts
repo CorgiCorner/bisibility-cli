@@ -126,7 +126,7 @@ export async function commandAuthStatus(ctx: CommandContext) {
     return renderJson({ ...base, online: false });
   }
   if (settings.apiKey) {
-    assertApiCredential(settings.apiKey);
+    assertApiCredential(settings.apiKey, settings.apiKeySource ?? "config", settings.configPath);
   }
 
   const health = await client.system.getHealth();

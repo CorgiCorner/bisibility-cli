@@ -1148,21 +1148,83 @@ describe("config commands", () => {
     expect(result.stderr).toContain("Config key must be");
   });
 
-  it.each(["bsp_live_old", "bsk_live_old"])(
-    "rejects a legacy API credential before calling the API: %s",
-    async (legacyCredential) => {
+  it.each([
+    {
+      args: ["projects", "list"],
+      credential: "bsp_live_old",
+      expectedRecovery: "Replace or unset BISIBILITY_API_KEY, then run 'bisibility auth login'.",
+      expectedSource: "BISIBILITY_API_KEY",
+      prefix: "bsp_",
+    },
+    {
+      args: ["projects", "list", "--api-key", "bsk_live_old"],
+      credential: undefined,
+      expectedRecovery:
+        "Remove --api-key and run 'bisibility auth login', or pass a supported credential.",
+      expectedSource: "--api-key",
+      prefix: "bsk_",
+    },
+  ])(
+    "identifies an invalid API credential from $expectedSource without exposing it",
+    async ({ args, credential, expectedRecovery, expectedSource, prefix }) => {
       const result = await runCli(
-        ["projects", "list"],
-        deps({ env: { BISIBILITY_API_KEY: legacyCredential } }),
+        args,
+        deps({ env: credential ? { BISIBILITY_API_KEY: credential } : {} }),
       );
 
       expect(result).toMatchObject({
         exitCode: 1,
-        stderr: expect.stringContaining("Legacy bsp_ and bsk_ credentials are not accepted."),
+        stderr: expect.stringContaining(
+          `Invalid API credential from ${expectedSource}: unsupported prefix "${prefix}".`,
+        ),
       });
+      expect(result.stderr).toContain(expectedRecovery);
+      expect(result.stderr).not.toContain("bsp_live_old");
+      expect(result.stderr).not.toContain("bsk_live_old");
       expect(sdk.client.listProjects).not.toHaveBeenCalled();
     },
   );
+
+  it("identifies an invalid API credential from the config file", async () => {
+    const dir = await mkdtemp(join(tmpdir(), "bisibility-cli-invalid-config-key-"));
+    const config = join(dir, "config.json");
+    await writeFile(config, JSON.stringify({ apiKey: "bsp_live_old" }));
+
+    const result = await runCli(
+      ["projects", "list", "--config", config],
+      deps({ env: {}, homeDir: dir }),
+    );
+
+    expect(result).toMatchObject({
+      exitCode: 1,
+      stderr: expect.stringContaining(
+        `Invalid API credential from config file "${config}": unsupported prefix "bsp_".`,
+      ),
+    });
+    expect(result.stderr).toContain("Run 'bisibility auth login' to replace it.");
+    expect(result.stderr).not.toContain("bsp_live_old");
+    expect(sdk.client.listProjects).not.toHaveBeenCalled();
+  });
+
+  it("rejects an invalid credential passed to config set without exposing it", async () => {
+    const dir = await mkdtemp(join(tmpdir(), "bisibility-cli-invalid-config-value-"));
+    const config = join(dir, "config.json");
+
+    const result = await runCli(
+      ["config", "set", "apiKey", "invalidcredential", "--config", config],
+      deps({ env: {}, homeDir: dir }),
+    );
+
+    expect(result).toMatchObject({
+      exitCode: 1,
+      stderr: expect.stringContaining(
+        "Invalid API credential passed to 'bisibility config set apiKey': unsupported format.",
+      ),
+    });
+    expect(result.stderr).toContain("Run 'bisibility auth login', or pass a supported credential.");
+    expect(result.stderr).not.toContain("invalidcredential");
+    await expect(readFile(config, "utf8")).rejects.toMatchObject({ code: "ENOENT" });
+  });
 });
 
 describe("keywords commands", () => {
@@ -1910,7 +1972,9 @@ describe("keywords commands", () => {
     const result = await runCli(["keywords", "list"], deps({ env: {}, homeDir }));
 
     expect(result.exitCode).toBe(1);
-    expect(result.stderr).toContain("API key is required");
+    expect(result.stderr).toContain(
+      "Not logged in. Run 'bisibility auth login', or set BISIBILITY_API_KEY.",
+    );
   });
 
   it("reports missing default projects and invalid keyword subcommands", async () => {
@@ -3444,7 +3508,9 @@ describe("signals commands", () => {
     );
 
     expect(result.exitCode).toBe(1);
-    expect(result.stderr).toContain("API key is required");
+    expect(result.stderr).toContain(
+      "Not logged in. Run 'bisibility auth login', or set BISIBILITY_API_KEY.",
+    );
   });
 });
 

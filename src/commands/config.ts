@@ -42,7 +42,7 @@ export async function commandConfig(ctx: CommandContext, rest: readonly string[]
       assertPublicId(value, "prj", "projectId");
     }
     if (key === "apiKey") {
-      assertApiCredential(value);
+      assertApiCredential(value, "command");
     }
     const next: ConfigFile = { ...config, [key]: value };
     const path = await writeConfigFile(ctx.args, next, ctx.deps);

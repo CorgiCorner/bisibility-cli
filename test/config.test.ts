@@ -49,6 +49,7 @@ describe("config helpers", () => {
 
     expect(settings).toMatchObject({
       apiKey: "from_env",
+      apiKeySource: "environment",
       baseUrl: "https://self-host.test/api/v1",
       cloudUrl: "https://self-host.test",
       projectId: "prj_config000000000000000000",

@@ -11,6 +11,7 @@ export const LOCAL_PROJECT_DIRECTORY = ".bisibility";
 export const LOCAL_PROJECT_FILE = "project.json";
 type ProjectId = PublicIdForPrefix<"prj">;
 
+export type ApiCredentialSource = "command" | "config" | "environment" | "flag";
 export type ProjectSelectionSource = "environment" | "flag" | "global" | "local";
 
 export type ConfigFile = {
@@ -22,6 +23,7 @@ export type ConfigFile = {
 
 export type ResolvedSettings = {
   apiKey?: string;
+  apiKeySource?: ApiCredentialSource;
   baseUrl: string;
   cloudUrl: string;
   config: ConfigFile;
@@ -55,12 +57,39 @@ export function isApiCredential(value: string) {
   return API_CREDENTIAL_PREFIXES.some((prefix) => value.startsWith(prefix));
 }
 
-export function assertApiCredential(value: string) {
+function apiCredentialPrefix(value: string) {
+  return /^[a-z][a-z0-9]{1,7}_/i.exec(value)?.[0];
+}
+
+export function assertApiCredential(
+  value: string,
+  source: ApiCredentialSource,
+  configPath?: string,
+) {
   if (isApiCredential(value)) {
     return value;
   }
+
+  const prefix = apiCredentialPrefix(value);
+  const problem = prefix ? `unsupported prefix "${prefix}"` : "unsupported format";
+  if (source === "environment") {
+    throw new Error(
+      `Invalid API credential from BISIBILITY_API_KEY: ${problem}. Replace or unset BISIBILITY_API_KEY, then run 'bisibility auth login'.`,
+    );
+  }
+  if (source === "flag") {
+    throw new Error(
+      `Invalid API credential from --api-key: ${problem}. Remove --api-key and run 'bisibility auth login', or pass a supported credential.`,
+    );
+  }
+  if (source === "command") {
+    throw new Error(
+      `Invalid API credential passed to 'bisibility config set apiKey': ${problem}. Run 'bisibility auth login', or pass a supported credential.`,
+    );
+  }
+  const configSource = configPath ? `config file "${configPath}"` : "the config file";
   throw new Error(
-    "API credential must use bsb_key_live_, bsb_key_test_, or bsb_pat_live_. Legacy bsp_ and bsk_ credentials are not accepted.",
+    `Invalid API credential from ${configSource}: ${problem}. Run 'bisibility auth login' to replace it.`,
   );
 }
 
@@ -231,7 +260,16 @@ export async function loadSettings(
   const env = deps.env ?? process.env;
   const configPath = defaultConfigPath(args, deps);
   const config = await readConfigFile(args, deps);
-  const apiKey = getStringFlag(args, "api-key") ?? env.BISIBILITY_API_KEY ?? config.apiKey;
+  const apiKeyFromFlag = getStringFlag(args, "api-key");
+  const apiKeyFromEnvironment = env.BISIBILITY_API_KEY;
+  const apiKey = apiKeyFromFlag ?? apiKeyFromEnvironment ?? config.apiKey;
+  const apiKeySource: ApiCredentialSource | undefined = apiKeyFromFlag
+    ? "flag"
+    : apiKeyFromEnvironment
+      ? "environment"
+      : config.apiKey
+        ? "config"
+        : undefined;
   const baseUrl =
     getStringFlag(args, "base-url") ??
     env.BISIBILITY_BASE_URL ??
@@ -264,6 +302,7 @@ export async function loadSettings(
 
   return {
     ...(apiKey ? { apiKey } : {}),
+    ...(apiKeySource ? { apiKeySource } : {}),
     baseUrl,
     cloudUrl,
     config,

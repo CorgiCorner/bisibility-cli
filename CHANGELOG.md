@@ -2,6 +2,11 @@
 
 ## Unreleased
 
+## [0.4.1] - 2026-08-02
+
+- Improved authentication errors to distinguish missing and invalid credentials, identify the
+  invalid credential source, and provide an actionable login command.
+
 ## [0.4.0] - 2026-08-02
 
 - Added daily interactive update notifications plus `bisibility upgrade` and

@@ -188,12 +188,10 @@ export function tagsFromArgs(args: ParsedArgs) {
 export async function settingsAndClient(ctx: CommandContext, requiresApiKey = true) {
   const settings = await loadSettings(ctx.args, ctx.deps);
   if (requiresApiKey && !settings.apiKey) {
-    throw new CliError(
-      "API key is required. Set BISIBILITY_API_KEY or run bisibility config set apiKey <key>.",
-    );
+    throw new CliError("Not logged in. Run 'bisibility auth login', or set BISIBILITY_API_KEY.");
   }
   if (requiresApiKey && settings.apiKey) {
-    assertApiCredential(settings.apiKey);
+    assertApiCredential(settings.apiKey, settings.apiKeySource ?? "config", settings.configPath);
   }
   const apiKey =
     settings.apiKey && (requiresApiKey || isApiCredential(settings.apiKey))
