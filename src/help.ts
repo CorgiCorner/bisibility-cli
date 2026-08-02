@@ -53,6 +53,7 @@ Commands:
   competitors ...              Manage competitors
   notifications prefs          Manage notification preferences
   tokens ...                   Manage migration tokens
+  upgrade                      Check for and install CLI updates
   me show|update|tokens        Manage your profile and personal access tokens
   capabilities                 List machine-readable API capabilities, no API key needed
   openapi                      Print the OpenAPI document, no API key needed
@@ -828,6 +829,20 @@ Logout removes a credential stored in the config without revoking it. Pass
 `;
 }
 
+export function upgradeHelp() {
+  return `Usage:
+  bisibility upgrade [options]
+
+Options:
+  --check                       Check for updates without installing
+  --json                        Print machine-readable update information
+
+The command detects npm, pnpm, or Bun from the running CLI path and delegates
+the global package update to that manager. Yarn Classic and installations with
+inconclusive detection receive manual commands and remain unchanged.
+`;
+}
+
 const helpByCommand: Readonly<Record<string, () => string>> = {
   alerts: alertsHelp,
   analytics: analyticsHelp,
@@ -866,6 +881,7 @@ const helpByCommand: Readonly<Record<string, () => string>> = {
   team: teamHelp,
   tokens: tokensHelp,
   unlink: linkHelp,
+  upgrade: upgradeHelp,
   views: viewsHelp,
 };
 

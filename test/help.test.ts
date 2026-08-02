@@ -31,6 +31,7 @@ import {
   sitemapsHelp,
   teamHelp,
   tokensHelp,
+  upgradeHelp,
   viewsHelp,
 } from "../src/help.js";
 
@@ -41,6 +42,7 @@ describe("help text", () => {
     expect(mainHelp()).toContain("api-keys");
     expect(mainHelp()).toContain("projects");
     expect(mainHelp()).toContain("saved list|add|delete");
+    expect(mainHelp()).toContain("upgrade");
     expect(keywordsHelp()).toContain("keywords add");
     expect(keywordsHelp()).toContain("keywords bulk");
     expect(keywordsAddHelp()).toContain("--target-url");
@@ -96,6 +98,8 @@ describe("help text", () => {
     expect(configHelp()).toContain("config set");
     expect(authHelp()).toContain("auth status");
     expect(authHelp()).toContain("https://bisibility.com/app/account/security");
+    expect(upgradeHelp()).toContain("--check");
+    expect(upgradeHelp()).toContain("Yarn Classic");
   });
 
   it("routes help by command path", () => {
@@ -132,6 +136,7 @@ describe("help text", () => {
     expect(helpFor(["cloud"])).toBe(cloudImportHelp());
     expect(helpFor(["config"])).toBe(configHelp());
     expect(helpFor(["auth"])).toBe(authHelp());
+    expect(helpFor(["upgrade"])).toBe(upgradeHelp());
     expect(helpFor(["missing"])).toBe(mainHelp());
   });
 

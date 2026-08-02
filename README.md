@@ -21,6 +21,22 @@ Install the published package:
 npm install -g @bisibility/cli
 ```
 
+Check for an update without changing the installation, or upgrade through the detected global
+package manager:
+
+```sh
+bisibility upgrade --check
+bisibility upgrade
+```
+
+The CLI checks npm for a newer stable release at most once per day while an interactive command is
+running. A cached notification is printed to stderr after successful command output. Checks are
+suppressed for JSON output, help, version output, CI, and non-interactive sessions. Set
+`BISIBILITY_NO_UPDATE_CHECK=1` or the conventional `NO_UPDATE_NOTIFIER=1` to disable them. The
+upgrade command supports npm, pnpm, and Bun; when the installation method cannot be identified, it
+prints manual commands without changing the installation. Yarn Classic installations also use this
+manual fallback to avoid creating a second global installation with another package manager.
+
 To work on the CLI from source:
 
 ```sh

@@ -23,6 +23,7 @@ import { handlers as signalHandlers } from "./commands/signals.js";
 import { handlers as sitemapHandlers } from "./commands/sitemaps.js";
 import { handlers as teamHandlers } from "./commands/team.js";
 import { handlers as tokenHandlers } from "./commands/tokens.js";
+import { handlers as upgradeHandlers } from "./commands/upgrade.js";
 import { handlers as viewHandlers } from "./commands/views.js";
 import { type CliDeps, CliError, type CliResult, type CommandContext } from "./context.js";
 import { VERSION, helpFor, mainHelp } from "./help.js";
@@ -76,6 +77,7 @@ const commandHandlers: Readonly<Record<string, CommandHandler>> = {
   team: teamHandlers.default,
   tokens: tokenHandlers.default,
   unlink: (ctx) => linkHandlers.unlink(ctx),
+  upgrade: upgradeHandlers.upgrade,
   views: viewHandlers.default,
 };
 

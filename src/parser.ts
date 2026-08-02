@@ -22,6 +22,7 @@ export const booleanFlags = new Set([
   "clear-intent",
   "clear-target-url",
   "clear-topic",
+  "check",
   "clickstream",
   "csv",
   "disabled",

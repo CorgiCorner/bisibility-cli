@@ -2,6 +2,12 @@
 
 ## Unreleased
 
+## [0.4.0] - 2026-08-02
+
+- Added daily interactive update notifications plus `bisibility upgrade` and
+  `bisibility upgrade --check`, with manager-aware updates for npm, pnpm, and Bun and manual
+  fallback instructions for Yarn Classic or unrecognized installations.
+
 ## [0.3.0] - 2026-08-02
 
 - Added `saved list`, `saved add`, and `saved delete` commands for managing keyword ideas without

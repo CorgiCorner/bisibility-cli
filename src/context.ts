@@ -41,6 +41,12 @@ type SelectedProject = Project & { id: ProjectId };
 
 export type FetchLike = typeof globalThis.fetch;
 
+export type RunProcess = (
+  command: string,
+  args: readonly string[],
+  onOutput: (message: string) => void,
+) => Promise<number>;
+
 export type CliDeps = ConfigDeps & {
   fetch?: FetchLike;
   hostName?: () => string;
@@ -50,6 +56,8 @@ export type CliDeps = ConfigDeps & {
   openBrowser?: (url: string) => Promise<void>;
   projectSelector?: (projects: readonly Project[]) => Promise<string | undefined>;
   readStdin?: () => Promise<string>;
+  runProcess?: RunProcess;
+  scriptPath?: string;
 };
 
 export type CliResult = {
