@@ -48,6 +48,7 @@ Commands:
   sitemaps ...                 Manage sitemap monitors
   team ...                     Manage team members and invites
   providers ...                Manage provider connections
+  saved list|add|delete        Manage saved keyword ideas
   views ...                    Manage saved views
   competitors ...              Manage competitors
   notifications prefs          Manage notification preferences
@@ -624,6 +625,21 @@ Options:
 `;
 }
 
+export function savedHelp() {
+  return `Usage:
+  bisibility saved list [options]
+  bisibility saved add <keyword...> [options]
+  bisibility saved delete <saved-keyword-id> [options]
+
+Options:
+  --project <id>, -p <id>      Project ID
+  --limit <n>                  Page size, defaults to 50
+  --cursor <cursor>            API pagination cursor
+  --all                        Fetch all pages for list commands
+  --json                       Print JSON
+`;
+}
+
 export function competitorsHelp() {
   return `Usage:
   bisibility competitors list [options]
@@ -844,6 +860,7 @@ const helpByCommand: Readonly<Record<string, () => string>> = {
   openapi: openapiHelp,
   projects: projectsHelp,
   providers: providersHelp,
+  saved: savedHelp,
   signals: signalsHelp,
   sitemaps: sitemapsHelp,
   team: teamHelp,

@@ -129,12 +129,12 @@ export async function commandCost(ctx: CommandContext, rest: readonly string[]) 
   const { client } = await settingsAndClient(ctx, false);
 
   if (action === "estimate") {
-    const result = await client.getCostEstimate(costEstimateInput(ctx.args));
+    const result = await client.pricing.estimate(costEstimateInput(ctx.args));
     return hasFlag(ctx.args, "json") ? renderJson(result) : costEstimateSummary(result.data);
   }
 
   if (action === "provider-rates") {
-    const result = await client.getProviderRates();
+    const result = await client.pricing.getRates();
     return hasFlag(ctx.args, "json")
       ? renderJson(result)
       : renderTable(result.data, providerRateColumns());

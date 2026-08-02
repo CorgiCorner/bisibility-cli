@@ -1,5 +1,12 @@
 # Changelog
 
+## Unreleased
+
+## [0.3.0] - 2026-08-02
+
+- Added `saved list`, `saved add`, and `saved delete` commands for managing keyword ideas without
+  starting rank tracking.
+
 ## [0.2.1] - 2026-07-30
 
 - Improved package metadata to describe the CLI's rank-check and ranking-history commands.

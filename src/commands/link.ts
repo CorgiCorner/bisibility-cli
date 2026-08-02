@@ -6,7 +6,7 @@ import { CliError, type CommandContext, chooseProject, settingsAndClient } from 
 
 export async function commandLink(ctx: CommandContext, rest: readonly string[]) {
   const { client } = await settingsAndClient(ctx);
-  const response = await client.listProjects();
+  const response = await client.projects.list();
   const project = await chooseProject(
     ctx,
     response.data,

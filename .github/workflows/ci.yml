@@ -14,7 +14,7 @@ jobs:
     # @bisibility/sdk range resolves from npm. The private repository runs the
     # same checks through its own workflow instead, so this job is skipped there.
     if: github.repository == 'CorgiCorner/bisibility-cli'
-    runs-on: ubuntu-latest
+    runs-on: ${{ github.repository != 'CorgiCorner/bisibility-cli' && vars.CI_USE_DEPOT == 'true' && 'depot-ubuntu-24.04' || 'ubuntu-latest' }}
     timeout-minutes: 15
     steps:
       - name: Check out CLI

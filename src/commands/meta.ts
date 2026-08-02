@@ -14,7 +14,7 @@ export function capabilityColumns() {
 
 export async function commandCapabilities(ctx: CommandContext) {
   const { client } = await settingsAndClient(ctx, false);
-  const response = await client.getCapabilities();
+  const response = await client.system.getCapabilities();
   return hasFlag(ctx.args, "json")
     ? renderJson(response)
     : renderTable(response.data, capabilityColumns());
@@ -22,13 +22,13 @@ export async function commandCapabilities(ctx: CommandContext) {
 
 export async function commandOpenApi(ctx: CommandContext) {
   const { client } = await settingsAndClient(ctx, false);
-  const document = await client.getOpenApi();
+  const document = await client.system.getOpenApi();
   return writeOrReturn(ctx, renderJson(document));
 }
 
 export async function commandLlmsText(ctx: CommandContext) {
   const { client } = await settingsAndClient(ctx, false);
-  const text = await client.getLlmsText();
+  const text = await client.system.getLlmsText();
   return writeOrReturn(ctx, text.endsWith("\n") ? text : `${text}\n`);
 }
 

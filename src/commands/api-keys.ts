@@ -6,7 +6,7 @@ import { assertPublicId } from "../public-id.js";
 import {
   CliError,
   type CommandContext,
-  collectPaginated,
+  listOrAll,
   paginationOptions,
   required,
   resolveProjectId,
@@ -32,18 +32,20 @@ export async function commandApiKeys(ctx: CommandContext, rest: readonly string[
   if (action === "list") {
     if (scoped) {
       const projectId = await resolveProjectId(client, ctx, settings.projectId);
-      const response = await collectPaginated(
-        (options) => client.listProjectApiKeys(projectId, options),
-        paginationOptions(ctx.args),
+      const options = { ...paginationOptions(ctx.args), projectId };
+      const response = await listOrAll(
+        () => client.apiKeys.list(options),
+        (cursor) => client.apiKeys.iterate({ ...options, cursor }),
         hasFlag(ctx.args, "all"),
       );
       return hasFlag(ctx.args, "json")
         ? renderJson(response)
         : renderTable(response.data, apiKeyColumns());
     }
-    const response = await collectPaginated(
-      (options) => client.listApiKeys(options),
-      paginationOptions(ctx.args),
+    const options = paginationOptions(ctx.args);
+    const response = await listOrAll(
+      () => client.apiKeys.list(options),
+      (cursor) => client.apiKeys.iterate({ ...options, cursor }),
       hasFlag(ctx.args, "all"),
     );
     return hasFlag(ctx.args, "json")
@@ -53,12 +55,12 @@ export async function commandApiKeys(ctx: CommandContext, rest: readonly string[
 
   if (action === "create") {
     const name = required(getStringFlag(ctx.args, "name"), "api-keys create requires --name.");
-    let result: Awaited<ReturnType<typeof client.createApiKey>>;
+    let result: Awaited<ReturnType<typeof client.apiKeys.create>>;
     if (scoped) {
       const projectId = await resolveProjectId(client, ctx, settings.projectId);
-      result = await client.createProjectApiKey(projectId, { name });
+      result = await client.apiKeys.create({ name }, { projectId });
     } else {
-      result = await client.createApiKey({ name });
+      result = await client.apiKeys.create({ name });
     }
     if (hasFlag(ctx.args, "json")) {
       return renderJson(result);
@@ -73,7 +75,7 @@ export async function commandApiKeys(ctx: CommandContext, rest: readonly string[
 
   if (action === "revoke") {
     const keyId = assertPublicId(required(rest[1], "Pass an API key ID."), "key", "API key ID");
-    const result = await client.revokeApiKey(keyId);
+    const result = await client.apiKeys.revoke(keyId);
     if (hasFlag(ctx.args, "json")) {
       return renderJson(result);
     }

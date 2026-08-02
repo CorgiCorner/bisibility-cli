@@ -31,7 +31,7 @@ export async function commandSitemaps(ctx: CommandContext, rest: readonly string
   const projectId = await resolveProjectId(client, ctx, settings.projectId);
 
   if (action === "list") {
-    const result = await client.listSitemapMonitors(projectId);
+    const result = await client.sitemapMonitors.list(projectId);
     return hasFlag(ctx.args, "json")
       ? renderJson(result)
       : renderTable(result.data, sitemapColumns());
@@ -39,7 +39,7 @@ export async function commandSitemaps(ctx: CommandContext, rest: readonly string
 
   if (action === "enable" || action === "disable") {
     const monitorId = rest[1] ? assertPublicId(rest[1], "prj", "Sitemap monitor ID") : projectId;
-    const result = await client.updateSitemapMonitor(projectId, monitorId, {
+    const result = await client.sitemapMonitors.update(projectId, monitorId, {
       enabled: action === "enable",
     });
     return hasFlag(ctx.args, "json")

@@ -5,7 +5,7 @@ import { type ParsedArgs, getStringFlag, hasFlag } from "../parser.js";
 import {
   CliError,
   type CommandContext,
-  collectPaginated,
+  listOrAll,
   paginationOptions,
   parseOptionalPositiveInt,
   providerConnectInput,
@@ -59,9 +59,10 @@ export async function commandProviders(ctx: CommandContext, rest: readonly strin
   const { client, settings } = await settingsAndClient(ctx);
   const projectId = await resolveProjectId(client, ctx, settings.projectId);
   if (action === "list") {
-    const response = await collectPaginated(
-      (options) => client.listProviders(projectId, options),
-      paginationOptions(ctx.args),
+    const options = paginationOptions(ctx.args);
+    const response = await listOrAll(
+      () => client.providers.list(projectId, options),
+      (cursor) => client.providers.iterate(projectId, { ...options, cursor }),
       hasFlag(ctx.args, "all"),
     );
     return hasFlag(ctx.args, "json")
@@ -72,7 +73,7 @@ export async function commandProviders(ctx: CommandContext, rest: readonly strin
   const providerId = required(rest[1], "Pass a provider ID.");
   switch (action) {
     case "connect": {
-      const result = await client.connectProvider(
+      const result = await client.providers.connect(
         projectId,
         providerId,
         providerConnectInput(ctx.args),
@@ -80,7 +81,7 @@ export async function commandProviders(ctx: CommandContext, rest: readonly strin
       return providerConnectionOutput(ctx.args, result);
     }
     case "test": {
-      const result = await client.testProviderConnection(
+      const result = await client.providers.test(
         projectId,
         providerId,
         providerTestInput(ctx.args),
@@ -89,10 +90,7 @@ export async function commandProviders(ctx: CommandContext, rest: readonly strin
     }
     case "enable":
     case "disable": {
-      const result =
-        action === "enable"
-          ? await client.enableProvider(projectId, providerId)
-          : await client.disableProvider(projectId, providerId);
+      const result = await client.providers.setEnabled(projectId, providerId, action === "enable");
       return providerConnectionOutput(ctx.args, result);
     }
     case "priority": {
@@ -103,11 +101,11 @@ export async function commandProviders(ctx: CommandContext, rest: readonly strin
       if (priority === undefined) {
         throw new CliError("Pass a provider priority.");
       }
-      const result = await client.setProviderPriority(projectId, providerId, priority);
+      const result = await client.providers.setPriority(projectId, providerId, priority);
       return providerConnectionOutput(ctx.args, result);
     }
     case "primary": {
-      const result = await client.setPrimaryProvider(
+      const result = await client.providers.setPrimary(
         projectId,
         providerId,
         !hasFlag(ctx.args, "off"),
@@ -115,7 +113,7 @@ export async function commandProviders(ctx: CommandContext, rest: readonly strin
       return providerConnectionOutput(ctx.args, result);
     }
     case "disconnect": {
-      const result = await client.disconnectProvider(projectId, providerId);
+      const result = await client.providers.disconnect(projectId, providerId);
       return hasFlag(ctx.args, "json")
         ? renderJson(result)
         : renderKeyValues([["ok", yesNo(result.ok)]]);

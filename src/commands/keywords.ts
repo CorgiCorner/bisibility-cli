@@ -23,10 +23,10 @@ import { type ParsedArgs, getStringFlag, hasFlag } from "../parser.js";
 import {
   CliError,
   type CommandContext,
-  collectKeywords,
   hasOwnProperties,
   keywordColumns,
   keywordFilters,
+  listOrAll,
   parseDevice,
   parseFrequency,
   parseJsonObject,
@@ -151,7 +151,7 @@ export async function commandKeywordsResearch(ctx: CommandContext, rest: readonl
   const { client, settings } = await settingsAndClient(ctx);
   const projectId = await resolveProjectId(client, ctx, settings.projectId);
   const options = connectionOptions(ctx);
-  const response = await client.researchKeywords(projectId, {
+  const response = await client.keywords.research(projectId, {
     ...options,
     mode,
     resultLimit,
@@ -323,7 +323,7 @@ export async function commandKeywordsMatch(ctx: CommandContext, rest: readonly s
   const texts = matchTexts(rest);
   const { client, settings } = await settingsAndClient(ctx);
   const projectId = await resolveProjectId(client, ctx, settings.projectId);
-  const response = await client.matchProjectKeywords(projectId, { texts });
+  const response = await client.keywords.match(projectId, { texts });
   const results = matchResults(texts, response);
   return hasFlag(ctx.args, "json")
     ? renderJson({ ...response, results })
@@ -334,7 +334,7 @@ export async function commandKeywordsMetrics(ctx: CommandContext) {
   const keywords = await metricKeywords(ctx);
   const { client, settings } = await settingsAndClient(ctx);
   const projectId = await resolveProjectId(client, ctx, settings.projectId);
-  const response = await client.getKeywordMetrics(projectId, keywordMetricInput(keywords, ctx));
+  const response = await client.keywords.metrics.get(projectId, keywordMetricInput(keywords, ctx));
   const estimateOnly = hasFlag(ctx.args, "estimate");
   if (!estimateOnly && response.fetched_count > 0) paidLookupNotice(ctx, response.cost_cents);
   return estimateOnly || hasFlag(ctx.args, "json")
@@ -408,7 +408,7 @@ export async function commandKeywordsSuggestRanked(ctx: CommandContext) {
   const projectId = await resolveProjectId(client, ctx, settings.projectId);
   const options = rankedSuggestionOptions(ctx);
   const all = hasFlag(ctx.args, "all");
-  const first = await client.listRankedKeywordSuggestions(projectId, options);
+  const first = await client.keywords.suggestions.list(projectId, options);
   let paidCostCents = recordPaidLookup(ctx, first);
   if (!all) {
     return hasFlag(ctx.args, "json") ? renderJson(first) : rankedHumanOutput(first);
@@ -424,7 +424,7 @@ export async function commandKeywordsSuggestRanked(ctx: CommandContext) {
     (latest.total_count === null || latest.offset + latest.rows.length < latest.total_count)
   ) {
     const offset = latest.offset + 100;
-    latest = await client.listRankedKeywordSuggestions(projectId, { ...options, offset });
+    latest = await client.keywords.suggestions.list(projectId, { ...options, offset });
     rows.push(...latest.rows);
     paidCostCents += recordPaidLookup(ctx, latest);
     pages += 1;
@@ -498,7 +498,7 @@ export async function commandKeywordsAdd(ctx: CommandContext, rest: readonly str
     return item;
   });
 
-  const result = await client.addKeywords(projectId, { keywords });
+  const result = await client.keywords.add(projectId, { keywords });
   if (hasFlag(ctx.args, "json")) {
     return renderJson(result);
   }
@@ -513,10 +513,10 @@ export async function commandKeywordsAdd(ctx: CommandContext, rest: readonly str
 export async function commandKeywordsList(ctx: CommandContext) {
   const { client, settings } = await settingsAndClient(ctx);
   const projectId = await resolveProjectId(client, ctx, settings.projectId);
-  const response = await collectKeywords(
-    client,
-    projectId,
-    keywordFilters(ctx.args, 50),
+  const filters = keywordFilters(ctx.args, 50);
+  const response = await listOrAll(
+    () => client.keywords.list(projectId, filters),
+    (cursor) => client.keywords.iterate(projectId, { ...filters, cursor }),
     hasFlag(ctx.args, "all"),
   );
   if (hasFlag(ctx.args, "json")) {
@@ -543,7 +543,7 @@ export function keywordSummary(keyword: Keyword) {
 export async function commandKeywordsGet(ctx: CommandContext, rest: readonly string[]) {
   const keywordId = assertPublicId(required(rest[0], "Pass a keyword ID."), "kw", "Keyword ID");
   const { client } = await settingsAndClient(ctx);
-  const result = await client.getKeyword(keywordId);
+  const result = await client.keywords.get(keywordId);
   return hasFlag(ctx.args, "json") ? renderJson(result) : keywordSummary(result);
 }
 
@@ -628,14 +628,14 @@ export async function commandKeywordsUpdate(ctx: CommandContext, rest: readonly 
     throw new CliError("Pass at least one keyword field flag to update.");
   }
   const { client } = await settingsAndClient(ctx);
-  const result = await client.updateKeyword(keywordId, input);
+  const result = await client.keywords.update(keywordId, input);
   return hasFlag(ctx.args, "json") ? renderJson(result) : keywordSummary(result);
 }
 
 export async function commandKeywordsDelete(ctx: CommandContext, rest: readonly string[]) {
   const keywordId = assertPublicId(required(rest[0], "Pass a keyword ID."), "kw", "Keyword ID");
   const { client } = await settingsAndClient(ctx);
-  const result = await client.deleteKeyword(keywordId);
+  const result = await client.keywords.delete(keywordId);
   if (hasFlag(ctx.args, "json")) {
     return renderJson(result ?? null);
   }
@@ -700,7 +700,7 @@ export function keywordBulkInput(ctx: CommandContext, rest: readonly string[]): 
 export async function commandKeywordsBulk(ctx: CommandContext, rest: readonly string[]) {
   const input = keywordBulkInput(ctx, rest);
   const { client } = await settingsAndClient(ctx);
-  const result = await client.bulkUpdateKeywords(input);
+  const result = await client.keywords.bulkUpdate(input);
   if (hasFlag(ctx.args, "json")) {
     return renderJson(result);
   }

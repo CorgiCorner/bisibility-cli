@@ -12,9 +12,9 @@ import {
   CliError,
   type CommandContext,
   type ExportDocument,
-  collectKeywords,
-  collectRankChecks,
+  collectAsync,
   exportHeaders,
+  mapWithConcurrency,
   parseFormat,
   parsePositiveInt,
   rankCheckRows,
@@ -82,12 +82,12 @@ export async function commandExportRankHistory(ctx: CommandContext) {
       limit,
       ...(cursor ? { cursor } : {}),
     };
-    const result = await client.exportRankHistory(projectId, options);
+    const result = await client.rankChecks.history.export(projectId, options);
     return writeOrReturn(ctx, renderJson(result));
   }
 
   const options: ExportRankHistoryCsvOptions = { ...filters, format: "csv" };
-  const csv = await client.exportRankHistory(projectId, options);
+  const csv = await client.rankChecks.history.export(projectId, options);
   return writeOrReturn(ctx, csv);
 }
 
@@ -107,8 +107,14 @@ export async function commandExport(ctx: CommandContext, rest: readonly string[]
   const includeHistory = !hasFlag(ctx.args, "no-history");
   const { client, settings } = await settingsAndClient(ctx);
   const projectId = await resolveProjectId(client, ctx, settings.projectId);
-  const keywords = (await collectKeywords(client, projectId, { limit: 200 }, true)).data;
-  const checks = includeHistory ? await collectRankChecks(client, keywords, historyLimit) : [];
+  const keywords = await collectAsync(client.keywords.iterate(projectId, { limit: 200 }));
+  const checks = includeHistory
+    ? (
+        await mapWithConcurrency(keywords, 5, (keyword) =>
+          collectAsync(client.rankChecks.iterate(keyword.id, { limit: historyLimit })),
+        )
+      ).flat()
+    : [];
   const document: ExportDocument = {
     exported_at: (ctx.deps.now ?? (() => new Date()))().toISOString(),
     keywords,

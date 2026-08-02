@@ -41,13 +41,14 @@ export async function commandAuthLogin(ctx: CommandContext) {
     ...(ctx.deps.openBrowser ? { openBrowser: ctx.deps.openBrowser } : {}),
     ...(ctx.deps.oauthTimeoutMs ? { timeoutMs: ctx.deps.oauthTimeoutMs } : {}),
   });
-  let issued: Awaited<ReturnType<Client["createMyToken"]>>;
+  let issued: Awaited<ReturnType<Client["account"]["tokens"]["create"]>>;
   try {
-    issued = await new BisibilityClient({
+    const client = new BisibilityClient({
       apiKey: oauth.accessToken,
       baseUrl: settings.baseUrl,
       ...(ctx.deps.fetch ? { fetch: ctx.deps.fetch } : {}),
-    }).createMyToken({ expires_in_days: expiresInDays, name, scope });
+    });
+    issued = await client.account.tokens.create({ expires_in_days: expiresInDays, name, scope });
   } catch (error) {
     if (error instanceof BisibilityApiError) {
       throw new CliError(error.problem?.detail ?? error.message);
@@ -88,11 +89,12 @@ export async function commandAuthLogout(ctx: CommandContext) {
     if (!settings.apiKey.startsWith("bsb_pat_live_")) {
       throw new CliError("--revoke requires a personal access token.");
     }
-    await new BisibilityClient({
+    const client = new BisibilityClient({
       apiKey: settings.apiKey,
       baseUrl: settings.baseUrl,
       ...(ctx.deps.fetch ? { fetch: ctx.deps.fetch } : {}),
-    }).revokeMyToken("current");
+    });
+    await client.account.tokens.revoke("current");
   }
 
   const { apiKey: storedCredential, ...configWithoutCredential } = settings.config;
@@ -127,12 +129,12 @@ export async function commandAuthStatus(ctx: CommandContext) {
     assertApiCredential(settings.apiKey);
   }
 
-  const health = await client.getHealth();
+  const health = await client.system.getHealth();
   const personal = settings.apiKey?.startsWith("bsb_pat_live_") ?? false;
-  const me = personal ? await client.getMe() : null;
+  const me = personal ? await client.account.get() : null;
   let projects: Array<{ domain: string; id: string; name: string }> = me?.projects ?? [];
   if (!me && settings.apiKey) {
-    projects = (await client.listProjects()).data;
+    projects = (await client.projects.list()).data;
   }
   const activeProjectId =
     settings.projectId ?? (projects.length === 1 ? projects[0]?.id : undefined);

@@ -98,12 +98,12 @@ export async function commandCloudImport(ctx: CommandContext, rest: readonly str
     return renderJson({ dry_run: true, ...summary });
   }
 
-  let result: Awaited<ReturnType<BisibilityClient["importCloudExport"]>>;
+  let result: Awaited<ReturnType<BisibilityClient["imports"]["runFromExport"]>>;
   try {
     // Migration tokens authenticate as `Authorization: Bearer mig_...`, so the token
     // is supplied as the client credential and the SDK targets the spec-correct
     // `/cloud/import` route on the cross-instance cloud host.
-    result = await cloudClient(ctx, settings.cloudUrl, token).importCloudExport(pkg);
+    result = await cloudClient(ctx, settings.cloudUrl, token).imports.runFromExport(pkg);
   } catch (error) {
     if (error instanceof BisibilityApiError) {
       throw new CliError(error.problem?.detail ?? error.message);
@@ -124,9 +124,9 @@ export async function commandCloudImport(ctx: CommandContext, rest: readonly str
 
 export async function commandCloudCompat(ctx: CommandContext, _rest: readonly string[] = []) {
   const settings = await loadSettings(ctx.args, ctx.deps);
-  let result: Awaited<ReturnType<BisibilityClient["getCloudImportCompatibility"]>>;
+  let result: Awaited<ReturnType<BisibilityClient["imports"]["compatibility"]["get"]>>;
   try {
-    result = await cloudClient(ctx, settings.cloudUrl).getCloudImportCompatibility();
+    result = await cloudClient(ctx, settings.cloudUrl).imports.compatibility.get();
   } catch (error) {
     if (error instanceof BisibilityApiError) {
       throw new CliError(error.problem?.detail ?? error.message);

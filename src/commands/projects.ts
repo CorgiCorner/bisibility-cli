@@ -184,7 +184,7 @@ export async function commandProjects(ctx: CommandContext, rest: readonly string
   const { client, settings } = await settingsAndClient(ctx);
   switch (action) {
     case "list": {
-      const response = await client.listProjects();
+      const response = await client.projects.list();
       const currentProjectId =
         settings.projectId ?? (response.data.length === 1 ? response.data[0]?.id : undefined);
       return hasFlag(ctx.args, "json")
@@ -198,7 +198,7 @@ export async function commandProjects(ctx: CommandContext, rest: readonly string
         : renderTable(response.data, projectColumns(currentProjectId));
     }
     case "create": {
-      const result = await client.createProject(projectCreateInput(ctx.args));
+      const result = await client.projects.create(projectCreateInput(ctx.args));
       if (hasFlag(ctx.args, "use")) {
         await saveGlobalProject(ctx, assertPublicId(result.id, "prj", "Created project ID"));
       }
@@ -206,7 +206,7 @@ export async function commandProjects(ctx: CommandContext, rest: readonly string
     }
     case "current": {
       const projectId = await resolveProjectId(client, ctx, settings.projectId);
-      const project = await client.getProject(projectId);
+      const project = await client.projects.get(projectId);
       const source = settings.projectSource ?? "inferred";
       return hasFlag(ctx.args, "json")
         ? renderJson({ project, source })
@@ -220,7 +220,7 @@ export async function commandProjects(ctx: CommandContext, rest: readonly string
     }
     case "switch":
     case "use": {
-      const response = await client.listProjects();
+      const response = await client.projects.list();
       const project = await chooseProject(
         ctx,
         response.data,
@@ -248,7 +248,7 @@ export async function commandProjects(ctx: CommandContext, rest: readonly string
       const projectId = rest[1]
         ? assertPublicId(rest[1], "prj", "Project ID")
         : await resolveProjectId(client, ctx, settings.projectId);
-      const result = await client.getProject(projectId);
+      const result = await client.projects.get(projectId);
       return projectOutput(ctx.args, result);
     }
     case "update": {
@@ -257,7 +257,7 @@ export async function commandProjects(ctx: CommandContext, rest: readonly string
         "prj",
         "Project ID",
       );
-      const result = await client.updateProject(projectId, projectUpdateInput(ctx.args));
+      const result = await client.projects.update(projectId, projectUpdateInput(ctx.args));
       return projectOutput(ctx.args, result);
     }
     case "delete": {
@@ -266,7 +266,7 @@ export async function commandProjects(ctx: CommandContext, rest: readonly string
         "prj",
         "Project ID",
       );
-      const result = await client.deleteProject(projectId);
+      const result = await client.projects.delete(projectId);
       return hasFlag(ctx.args, "json")
         ? renderJson(result)
         : renderKeyValues([
@@ -281,8 +281,8 @@ export async function commandProjects(ctx: CommandContext, rest: readonly string
         "Project ID",
       );
       const result = hasProjectDefaultsFlags(ctx.args)
-        ? await client.updateProjectDefaults(projectId, projectDefaultsInput(ctx.args))
-        : await client.getProjectDefaults(projectId);
+        ? await client.projects.updateDefaults(projectId, projectDefaultsInput(ctx.args))
+        : await client.projects.getDefaults(projectId);
       return hasFlag(ctx.args, "json") ? renderJson(result) : projectDefaultsSummary(result);
     }
     default:

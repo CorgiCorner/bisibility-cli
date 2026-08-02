@@ -6,7 +6,7 @@ import { assertPublicId } from "../public-id.js";
 import {
   CliError,
   type CommandContext,
-  collectPaginated,
+  listOrAll,
   parseIsoDate,
   parsePositiveInt,
   parseRankCheckStatus,
@@ -77,8 +77,8 @@ export async function commandCheckRun(ctx: CommandContext, keywordId: string) {
   const providerId = getStringFlag(ctx.args, "provider-id");
   const input = providerId ? { provider_id: parseProviderId(providerId) } : undefined;
   const result = hasFlag(ctx.args, "async")
-    ? await client.runRankCheck(resolvedKeywordId, input, { async: true })
-    : await client.runRankCheck(resolvedKeywordId, input);
+    ? await client.rankChecks.run(resolvedKeywordId, input, { async: true })
+    : await client.rankChecks.run(resolvedKeywordId, input);
   return hasFlag(ctx.args, "json") ? renderJson(result) : rankCheckSummary(result);
 }
 
@@ -91,16 +91,16 @@ export async function commandCheck(ctx: CommandContext, rest: readonly string[])
       "Rank check ID",
     );
     const { client } = await settingsAndClient(ctx);
-    const result = await client.getRankCheckResult(checkId);
+    const result = await client.rankChecks.getResult(checkId);
     return hasFlag(ctx.args, "json") ? renderJson(result) : rankCheckSummary(result);
   }
   if (action === "list") {
     const keywordId = assertPublicId(required(tail[0], "Pass a keyword ID."), "kw", "Keyword ID");
     const { client } = await settingsAndClient(ctx);
     const filters = rankCheckListFilters(ctx.args);
-    const response = await collectPaginated(
-      (options) => client.listRankChecks(keywordId, { ...filters, ...options }),
-      filters,
+    const response = await listOrAll(
+      () => client.rankChecks.list(keywordId, filters),
+      (cursor) => client.rankChecks.iterate(keywordId, { ...filters, cursor }),
       hasFlag(ctx.args, "all"),
     );
     return hasFlag(ctx.args, "json")

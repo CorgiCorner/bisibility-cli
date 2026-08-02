@@ -40,6 +40,7 @@ describe("help text", () => {
     expect(mainHelp()).toContain("--cloud-url <url>");
     expect(mainHelp()).toContain("api-keys");
     expect(mainHelp()).toContain("projects");
+    expect(mainHelp()).toContain("saved list|add|delete");
     expect(keywordsHelp()).toContain("keywords add");
     expect(keywordsHelp()).toContain("keywords bulk");
     expect(keywordsAddHelp()).toContain("--target-url");

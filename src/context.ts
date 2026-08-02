@@ -211,7 +211,7 @@ export async function resolveProjectId(
   if (projectId) {
     return assertPublicId(projectId, "prj", "Project ID");
   }
-  const projects = await client.listProjects();
+  const projects = await client.projects.list();
   if (projects.data.length === 0) {
     throw new CliError("No project was returned by the API. Pass --project <id>.");
   }
@@ -437,28 +437,29 @@ export function hasOwnProperties(value: object) {
   return Object.keys(value).length > 0;
 }
 
-export async function collectPaginated<T, R extends ListResponse<T>>(
-  fetchPage: (options: PaginationOptions) => Promise<R>,
-  options: PaginationOptions,
+export async function listOrAll<T, R extends ListResponse<T>>(
+  firstPage: () => Promise<R>,
+  iterateFrom: (cursor: string) => AsyncIterable<T>,
   all: boolean,
 ) {
-  const first = await fetchPage(options);
-  if (!all) {
-    return first;
-  }
-
+  const first = await firstPage();
+  const cursor = first.meta.next_cursor;
+  if (!all || !cursor) return first;
   const data = [...first.data];
-  let cursor = first.meta.next_cursor;
-  while (cursor) {
-    const page = await fetchPage({ ...options, cursor });
-    data.push(...page.data);
-    cursor = page.meta.next_cursor;
+  for await (const item of iterateFrom(cursor)) {
+    data.push(item);
   }
   return {
     ...first,
     data,
     meta: { ...first.meta, count: data.length, next_cursor: null },
   } as R;
+}
+
+export async function collectAsync<T>(items: AsyncIterable<T>) {
+  const collected: T[] = [];
+  for await (const item of items) collected.push(item);
+  return collected;
 }
 
 export function alertRuleInput(args: ParsedArgs, commandName: string) {
@@ -662,38 +663,6 @@ export function notificationInput(args: ParsedArgs) {
     }
   }
   return input;
-}
-
-export async function collectKeywords(
-  client: Client,
-  projectId: ProjectId,
-  filters: ListKeywordsOptions,
-  all: boolean,
-) {
-  return collectPaginated(
-    (options) => client.listKeywords(projectId, { ...filters, ...options }),
-    filters,
-    all,
-  );
-}
-
-export async function collectRankChecks(
-  client: Client,
-  keywords: readonly Keyword[],
-  limit: number,
-) {
-  const results = await mapWithConcurrency(keywords, 5, async (keyword) => {
-    const checks: RankCheck[] = [];
-    let cursor: string | null | undefined;
-    do {
-      const options = cursor ? { cursor, limit } : { limit };
-      const page = await client.listRankChecks(keyword.id, options);
-      checks.push(...page.data);
-      cursor = page.meta.next_cursor;
-    } while (cursor);
-    return checks;
-  });
-  return results.flat();
 }
 
 export async function mapWithConcurrency<T, R>(

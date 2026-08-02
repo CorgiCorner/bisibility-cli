@@ -6,7 +6,7 @@ import { assertPublicId } from "../public-id.js";
 import {
   CliError,
   type CommandContext,
-  collectPaginated,
+  listOrAll,
   paginationOptions,
   required,
   resolveProjectId,
@@ -51,9 +51,10 @@ export async function commandTokens(ctx: CommandContext, rest: readonly string[]
 
   if (action === "list") {
     const projectId = await resolveProjectId(client, ctx, settings.projectId);
-    const response = await collectPaginated(
-      (options) => client.listMigrationTokens(projectId, options),
-      paginationOptions(ctx.args),
+    const options = paginationOptions(ctx.args);
+    const response = await listOrAll(
+      () => client.imports.tokens.list(projectId, options),
+      (cursor) => client.imports.tokens.iterate(projectId, { ...options, cursor }),
       hasFlag(ctx.args, "all"),
     );
     return hasFlag(ctx.args, "json")
@@ -64,7 +65,7 @@ export async function commandTokens(ctx: CommandContext, rest: readonly string[]
   if (action === "mint") {
     const projectId = await resolveProjectId(client, ctx, settings.projectId);
     const scope = migrationScope(ctx.args);
-    const result = await client.mintMigrationToken(projectId, scope ? { scope } : {});
+    const result = await client.imports.tokens.create(projectId, scope ? { scope } : {});
     return hasFlag(ctx.args, "json") ? renderJson(result) : issuedMigrationTokenSummary(result);
   }
 
@@ -75,11 +76,11 @@ export async function commandTokens(ctx: CommandContext, rest: readonly string[]
       "Migration token ID",
     );
     const result = hasFlag(ctx.args, "global")
-      ? await client.revokeMigrationTokenById(tokenId)
-      : await client.revokeMigrationToken(
-          await resolveProjectId(client, ctx, settings.projectId),
-          tokenId,
-        );
+      ? await client.imports.tokens.revoke(tokenId)
+      : await client.imports.tokens.revoke({
+          id: tokenId,
+          projectId: await resolveProjectId(client, ctx, settings.projectId),
+        });
     return hasFlag(ctx.args, "json")
       ? renderJson(result)
       : renderKeyValues([

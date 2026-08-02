@@ -49,7 +49,7 @@ async function commandMyTokens(ctx: CommandContext, rest: readonly string[]) {
   const { client } = await settingsAndClient(ctx);
 
   if (action === "list") {
-    const response = await client.listMyTokens();
+    const response = await client.account.tokens.list();
     return hasFlag(ctx.args, "json")
       ? renderJson(response)
       : renderTable(response.data, personalAccessTokenColumns());
@@ -59,7 +59,7 @@ async function commandMyTokens(ctx: CommandContext, rest: readonly string[]) {
     const name = required(getStringFlag(ctx.args, "name"), "me tokens create requires --name.");
     const scope = tokenScope(ctx.args);
     const expiresInDays = tokenExpiry(ctx.args);
-    const result = await client.createMyToken({
+    const result = await client.account.tokens.create({
       name,
       ...(scope ? { scope } : {}),
       ...(expiresInDays !== undefined ? { expires_in_days: expiresInDays } : {}),
@@ -82,7 +82,7 @@ async function commandMyTokens(ctx: CommandContext, rest: readonly string[]) {
       "pat",
       "Personal access token ID",
     );
-    const result = await client.revokeMyToken(tokenId);
+    const result = await client.account.tokens.revoke(tokenId);
     return hasFlag(ctx.args, "json")
       ? renderJson(result)
       : renderKeyValues([
@@ -104,7 +104,7 @@ export async function commandMe(ctx: CommandContext, rest: readonly string[]) {
   const { client } = await settingsAndClient(ctx);
 
   if (action === "show") {
-    const me = await client.getMe();
+    const me = await client.account.get();
     if (hasFlag(ctx.args, "json")) {
       return renderJson(me);
     }
@@ -118,7 +118,7 @@ export async function commandMe(ctx: CommandContext, rest: readonly string[]) {
 
   if (action === "update") {
     const name = required(getStringFlag(ctx.args, "name"), "me update requires --name.");
-    const me = await client.updateMe({ name });
+    const me = await client.account.update({ name });
     if (hasFlag(ctx.args, "json")) {
       return renderJson(me);
     }

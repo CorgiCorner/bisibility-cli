@@ -26,7 +26,7 @@ export async function commandLocations(ctx: CommandContext, rest: readonly strin
   if (limit > 100) throw new CliError("--limit must not exceed 100.");
   const country = getStringFlag(ctx.args, "country");
   const { client } = await settingsAndClient(ctx);
-  const result = await client.searchLocations({
+  const result = await client.locations.search({
     ...(country ? { country } : {}),
     limit,
     q: query,

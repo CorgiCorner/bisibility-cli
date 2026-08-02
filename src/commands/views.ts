@@ -6,7 +6,7 @@ import { assertPublicId } from "../public-id.js";
 import {
   CliError,
   type CommandContext,
-  collectPaginated,
+  listOrAll,
   paginationOptions,
   required,
   resolveProjectId,
@@ -30,9 +30,10 @@ export async function commandViews(ctx: CommandContext, rest: readonly string[])
 
   if (action === "list") {
     const projectId = await resolveProjectId(client, ctx, settings.projectId);
-    const response = await collectPaginated(
-      (options) => client.listSavedViews(projectId, options),
-      paginationOptions(ctx.args),
+    const options = paginationOptions(ctx.args);
+    const response = await listOrAll(
+      () => client.savedViews.list(projectId, options),
+      (cursor) => client.savedViews.iterate(projectId, { ...options, cursor }),
       hasFlag(ctx.args, "all"),
     );
     return hasFlag(ctx.args, "json")
@@ -42,7 +43,7 @@ export async function commandViews(ctx: CommandContext, rest: readonly string[])
 
   if (action === "create") {
     const projectId = await resolveProjectId(client, ctx, settings.projectId);
-    const result = await client.createSavedView(projectId, await savedViewInput(ctx));
+    const result = await client.savedViews.create(projectId, await savedViewInput(ctx));
     if (hasFlag(ctx.args, "json")) {
       return renderJson(result);
     }
@@ -59,11 +60,11 @@ export async function commandViews(ctx: CommandContext, rest: readonly string[])
       "Saved view ID",
     );
     const result = hasFlag(ctx.args, "global")
-      ? await client.deleteSavedViewById(viewId)
-      : await client.deleteSavedView(
-          await resolveProjectId(client, ctx, settings.projectId),
-          viewId,
-        );
+      ? await client.savedViews.delete(viewId)
+      : await client.savedViews.delete({
+          id: viewId,
+          projectId: await resolveProjectId(client, ctx, settings.projectId),
+        });
     return hasFlag(ctx.args, "json")
       ? renderJson(result)
       : renderKeyValues([["deleted", yesNo(result.deleted)]]);

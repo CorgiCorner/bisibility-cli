@@ -6,7 +6,7 @@ import { assertPublicId } from "../public-id.js";
 import {
   CliError,
   type CommandContext,
-  collectPaginated,
+  listOrAll,
   paginationOptions,
   required,
   resolveProjectId,
@@ -54,9 +54,10 @@ export async function commandTeam(ctx: CommandContext, rest: readonly string[]) 
 
   if (action === "members" || action === "list") {
     const projectId = await resolveProjectId(client, ctx, settings.projectId);
-    const response = await collectPaginated(
-      (options) => client.listTeamMembers(projectId, options),
-      paginationOptions(ctx.args),
+    const options = paginationOptions(ctx.args);
+    const response = await listOrAll(
+      () => client.team.members.list(projectId, options),
+      (cursor) => client.team.members.iterate(projectId, { ...options, cursor }),
       hasFlag(ctx.args, "all"),
     );
     return hasFlag(ctx.args, "json")
@@ -66,9 +67,10 @@ export async function commandTeam(ctx: CommandContext, rest: readonly string[]) 
 
   if (action === "invites") {
     const projectId = await resolveProjectId(client, ctx, settings.projectId);
-    const response = await collectPaginated(
-      (options) => client.listTeamInvites(projectId, options),
-      paginationOptions(ctx.args),
+    const options = paginationOptions(ctx.args);
+    const response = await listOrAll(
+      () => client.team.invites.list(projectId, options),
+      (cursor) => client.team.invites.iterate(projectId, { ...options, cursor }),
       hasFlag(ctx.args, "all"),
     );
     return hasFlag(ctx.args, "json")
@@ -79,7 +81,10 @@ export async function commandTeam(ctx: CommandContext, rest: readonly string[]) 
   if (action === "invite") {
     const email = required(rest[1] ?? getStringFlag(ctx.args, "email"), "Pass an invite email.");
     const projectId = await resolveProjectId(client, ctx, settings.projectId);
-    const result = await client.createTeamInvite(projectId, { email, role: inviteRole(ctx.args) });
+    const result = await client.team.invites.create(projectId, {
+      email,
+      role: inviteRole(ctx.args),
+    });
     if (hasFlag(ctx.args, "json")) {
       return renderJson(result);
     }
@@ -93,11 +98,11 @@ export async function commandTeam(ctx: CommandContext, rest: readonly string[]) 
   if (action === "revoke") {
     const inviteId = assertPublicId(required(rest[1], "Pass an invite ID."), "inv", "Invite ID");
     const result = hasFlag(ctx.args, "global")
-      ? await client.revokeTeamInviteById(inviteId)
-      : await client.revokeTeamInvite(
-          await resolveProjectId(client, ctx, settings.projectId),
-          inviteId,
-        );
+      ? await client.team.invites.revoke(inviteId)
+      : await client.team.invites.revoke({
+          id: inviteId,
+          projectId: await resolveProjectId(client, ctx, settings.projectId),
+        });
     return hasFlag(ctx.args, "json")
       ? renderJson(result)
       : renderKeyValues([["invite", result.id]]);
@@ -106,7 +111,7 @@ export async function commandTeam(ctx: CommandContext, rest: readonly string[]) 
   if (action === "set-role") {
     const memberId = assertPublicId(required(rest[1], "Pass a member ID."), "mbr", "Member ID");
     const projectId = await resolveProjectId(client, ctx, settings.projectId);
-    const result = await client.updateTeamMemberRole(projectId, memberId, {
+    const result = await client.team.members.updateRole(projectId, memberId, {
       role: requiredMemberRole(ctx.args),
     });
     return hasFlag(ctx.args, "json")
@@ -120,7 +125,7 @@ export async function commandTeam(ctx: CommandContext, rest: readonly string[]) 
   if (action === "remove") {
     const memberId = assertPublicId(required(rest[1], "Pass a member ID."), "mbr", "Member ID");
     const projectId = await resolveProjectId(client, ctx, settings.projectId);
-    const result = await client.removeTeamMember(projectId, memberId);
+    const result = await client.team.members.remove(projectId, memberId);
     return hasFlag(ctx.args, "json")
       ? renderJson(result)
       : renderKeyValues([["removed member", result.id]]);
@@ -129,7 +134,7 @@ export async function commandTeam(ctx: CommandContext, rest: readonly string[]) 
   if (action === "resend-invite") {
     const inviteId = assertPublicId(required(rest[1], "Pass an invite ID."), "inv", "Invite ID");
     const projectId = await resolveProjectId(client, ctx, settings.projectId);
-    const result = await client.resendTeamInvite(projectId, inviteId);
+    const result = await client.team.invites.resend(projectId, inviteId);
     return hasFlag(ctx.args, "json")
       ? renderJson(result)
       : renderKeyValues([

@@ -9,6 +9,19 @@ import type { CliDeps } from "../src/index.js";
 import { PUBLIC_ID_PREFIXES } from "../src/public-id.js";
 
 const sdk = vi.hoisted(() => {
+  type ListPage = { data: unknown[]; meta: { next_cursor: string | null } };
+  const iteratorFor = (list: ReturnType<typeof vi.fn>, optionsIndex: number) =>
+    vi.fn(async function* (...args: unknown[]) {
+      const initial = (args[optionsIndex] as Record<string, unknown> | undefined) ?? {};
+      let cursor = initial.cursor as string | undefined;
+      do {
+        const callArgs = [...args];
+        callArgs[optionsIndex] = { ...initial, ...(cursor ? { cursor } : {}) };
+        const page = (await list(...callArgs)) as ListPage;
+        yield* page.data;
+        cursor = page.meta.next_cursor ?? undefined;
+      } while (cursor);
+    });
   const client = {
     addKeywords: vi.fn(),
     addCompetitor: vi.fn(),
@@ -20,12 +33,14 @@ const sdk = vi.hoisted(() => {
     createMyToken: vi.fn(),
     createProject: vi.fn(),
     createProjectApiKey: vi.fn(),
+    createSavedKeywords: vi.fn(),
     createSavedView: vi.fn(),
     createSignal: vi.fn(),
     createTeamInvite: vi.fn(),
     deleteAlertRule: vi.fn(),
     deleteKeyword: vi.fn(),
     deleteProject: vi.fn(),
+    deleteSavedKeyword: vi.fn(),
     deleteSavedView: vi.fn(),
     deleteSavedViewById: vi.fn(),
     disableProvider: vi.fn(),
@@ -59,6 +74,7 @@ const sdk = vi.hoisted(() => {
     listRankChecks: vi.fn(),
     listRankedKeywordSuggestions: vi.fn(),
     listSitemapMonitors: vi.fn(),
+    listSavedKeywords: vi.fn(),
     listSavedViews: vi.fn(),
     listSearchPerformanceQueryStats: vi.fn(),
     listSignals: vi.fn(),
@@ -97,6 +113,180 @@ const sdk = vi.hoisted(() => {
     updateSitemapMonitor: vi.fn(),
     updateTeamMemberRole: vi.fn(),
   };
+  const apiKeyList = vi.fn((options: Record<string, unknown> = {}) => {
+    const { projectId, ...pagination } = options;
+    return typeof projectId === "string"
+      ? client.listProjectApiKeys(projectId, pagination)
+      : client.listApiKeys(pagination);
+  });
+  const apiKeyIterate = vi.fn(async function* (options: Record<string, unknown> = {}) {
+    const { projectId, ...pagination } = options;
+    const list = typeof projectId === "string" ? client.listProjectApiKeys : client.listApiKeys;
+    const args = typeof projectId === "string" ? [projectId, pagination] : [pagination];
+    const optionsIndex = typeof projectId === "string" ? 1 : 0;
+    yield* iteratorFor(list, optionsIndex)(...args);
+  });
+  Object.assign(client, {
+    account: {
+      get: client.getMe,
+      update: client.updateMe,
+      tokens: {
+        list: client.listMyTokens,
+        create: client.createMyToken,
+        revoke: client.revokeMyToken,
+      },
+    },
+    alertRules: {
+      list: client.listAlertRules,
+      iterate: iteratorFor(client.listAlertRules, 1),
+      create: client.createAlertRule,
+      update: client.updateAlertRule,
+      delete: client.deleteAlertRule,
+    },
+    alerts: {
+      list: client.listTriggeredAlerts,
+      iterate: iteratorFor(client.listTriggeredAlerts, 1),
+      mute: client.muteTriggeredAlert,
+      markAllRead: ({ projectId }: { projectId: string }) =>
+        client.markProjectAlertsRead(projectId),
+    },
+    analytics: {
+      overview: {},
+      traffic: { list: client.listTrafficSnapshots, sync: client.syncProjectTraffic },
+      searchPerformance: { list: client.listSearchPerformanceQueryStats },
+    },
+    apiKeys: {
+      list: apiKeyList,
+      iterate: apiKeyIterate,
+      create: (input: unknown, scope?: { projectId?: string }) =>
+        scope?.projectId
+          ? client.createProjectApiKey(scope.projectId, input)
+          : client.createApiKey(input),
+      revoke: client.revokeApiKey,
+    },
+    backlinks: {
+      analyze: client.analyzeBacklinks,
+      extendSnapshot: client.loadMoreBacklinkRows,
+    },
+    competitors: {
+      list: client.listCompetitors,
+      iterate: iteratorFor(client.listCompetitors, 1),
+      add: client.addCompetitor,
+      remove: (selector: string | { id: string; projectId?: string }) =>
+        typeof selector === "string" || !selector.projectId
+          ? client.removeCompetitorById(typeof selector === "string" ? selector : selector.id)
+          : client.removeCompetitor(selector.projectId, selector.id),
+    },
+    imports: {
+      runFromExport: client.importCloudExport,
+      compatibility: { get: client.getCloudImportCompatibility },
+      tokens: {
+        list: client.listMigrationTokens,
+        iterate: iteratorFor(client.listMigrationTokens, 1),
+        create: client.mintMigrationToken,
+        revoke: (selector: string | { id: string; projectId?: string }) =>
+          typeof selector === "string" || !selector.projectId
+            ? client.revokeMigrationTokenById(typeof selector === "string" ? selector : selector.id)
+            : client.revokeMigrationToken(selector.projectId, selector.id),
+      },
+    },
+    keywords: {
+      list: client.listKeywords,
+      iterate: iteratorFor(client.listKeywords, 1),
+      add: client.addKeywords,
+      get: client.getKeyword,
+      update: client.updateKeyword,
+      delete: client.deleteKeyword,
+      bulkUpdate: client.bulkUpdateKeywords,
+      match: client.matchProjectKeywords,
+      research: client.researchKeywords,
+      suggestions: { list: client.listRankedKeywordSuggestions },
+      metrics: { get: client.getKeywordMetrics },
+      saved: {
+        list: client.listSavedKeywords,
+        iterate: iteratorFor(client.listSavedKeywords, 1),
+        create: client.createSavedKeywords,
+        delete: client.deleteSavedKeyword,
+      },
+    },
+    locations: { search: client.searchLocations },
+    notificationSettings: {
+      get: client.getNotificationPreferences,
+      update: client.updateNotificationPreferences,
+    },
+    pricing: { estimate: client.getCostEstimate, getRates: client.getProviderRates },
+    projects: {
+      list: client.listProjects,
+      create: client.createProject,
+      get: client.getProject,
+      update: client.updateProject,
+      delete: client.deleteProject,
+      getDefaults: client.getProjectDefaults,
+      updateDefaults: client.updateProjectDefaults,
+    },
+    providers: {
+      list: client.listProviders,
+      iterate: iteratorFor(client.listProviders, 1),
+      connect: client.connectProvider,
+      test: client.testProviderConnection,
+      setEnabled: (projectId: string, providerId: string, enabled: boolean) =>
+        enabled
+          ? client.enableProvider(projectId, providerId)
+          : client.disableProvider(projectId, providerId),
+      setPriority: client.setProviderPriority,
+      setPrimary: client.setPrimaryProvider,
+      disconnect: client.disconnectProvider,
+    },
+    rankChecks: {
+      list: client.listRankChecks,
+      iterate: iteratorFor(client.listRankChecks, 1),
+      run: client.runRankCheck,
+      getResult: client.getRankCheckResult,
+      history: { export: client.exportRankHistory },
+    },
+    savedViews: {
+      list: client.listSavedViews,
+      iterate: iteratorFor(client.listSavedViews, 1),
+      create: client.createSavedView,
+      delete: (selector: string | { id: string; projectId?: string }) =>
+        typeof selector === "string" || !selector.projectId
+          ? client.deleteSavedViewById(typeof selector === "string" ? selector : selector.id)
+          : client.deleteSavedView(selector.projectId, selector.id),
+    },
+    signals: {
+      list: client.listSignals,
+      iterate: iteratorFor(client.listSignals, 1),
+      create: client.createSignal,
+    },
+    sitemapMonitors: {
+      list: client.listSitemapMonitors,
+      update: client.updateSitemapMonitor,
+    },
+    system: {
+      getHealth: client.getHealth,
+      getCapabilities: client.getCapabilities,
+      getOpenApi: client.getOpenApi,
+      getLlmsText: client.getLlmsText,
+    },
+    team: {
+      members: {
+        list: client.listTeamMembers,
+        iterate: iteratorFor(client.listTeamMembers, 1),
+        updateRole: client.updateTeamMemberRole,
+        remove: client.removeTeamMember,
+      },
+      invites: {
+        list: client.listTeamInvites,
+        iterate: iteratorFor(client.listTeamInvites, 1),
+        create: client.createTeamInvite,
+        resend: client.resendTeamInvite,
+        revoke: (selector: string | { id: string; projectId?: string }) =>
+          typeof selector === "string" || !selector.projectId
+            ? client.revokeTeamInviteById(typeof selector === "string" ? selector : selector.id)
+            : client.revokeTeamInvite(selector.projectId, selector.id),
+      },
+    },
+  });
   return {
     BisibilityClient: vi.fn(() => client),
     client,
@@ -587,6 +777,23 @@ function savedView(overrides: Record<string, unknown> = {}) {
   };
 }
 
+function savedKeyword(overrides: Record<string, unknown> = {}) {
+  return {
+    cpc: 125,
+    difficulty: 42,
+    id: "svkw_a10000000000000000000000",
+    intent: "commercial",
+    location: "US",
+    saved_at: "2026-01-01T00:00:00.000Z",
+    source_seed: "seo tools",
+    text: "rank tracker",
+    trend: [],
+    variant_count: 3,
+    volume: 1200,
+    ...overrides,
+  };
+}
+
 function competitor(overrides: Record<string, unknown> = {}) {
   return {
     domain: "competitor.com",
@@ -734,7 +941,9 @@ function issuedMigrationToken(overrides: Record<string, unknown> = {}) {
 beforeEach(() => {
   sdk.BisibilityClient.mockClear();
   for (const value of Object.values(sdk.client)) {
-    value.mockReset();
+    if (vi.isMockFunction(value)) {
+      value.mockReset();
+    }
   }
   oauth.loginWithPkce.mockReset();
 });
@@ -4396,6 +4605,80 @@ describe("views and competitors commands", () => {
 
     await runCli(["competitors", "remove", "cmp_global000000000000000000", "--global"], deps());
     expect(sdk.client.removeCompetitorById).toHaveBeenCalledWith("cmp_global000000000000000000");
+  });
+});
+
+describe("saved keyword commands", () => {
+  it("lists, adds, and deletes saved keyword ideas", async () => {
+    sdk.client.listSavedKeywords.mockResolvedValueOnce(list([savedKeyword()]));
+    sdk.client.createSavedKeywords.mockResolvedValueOnce({
+      duplicate_count: 1,
+      results: [
+        { keyword: "rank tracker", status: "created" },
+        { keyword: "already tracked", status: "skipped" },
+      ],
+      saved_count: 1,
+    });
+    sdk.client.deleteSavedKeyword.mockResolvedValueOnce({ removed_count: 1 });
+
+    const listed = await runCli(
+      ["saved", "list", "--project", "prj_a10000000000000000000000"],
+      deps(),
+    );
+    expect(listed.stdout).toContain("rank tracker");
+
+    const added = await runCli(
+      [
+        "saved",
+        "add",
+        "rank tracker",
+        "already tracked",
+        "--project",
+        "prj_a10000000000000000000000",
+      ],
+      deps(),
+    );
+    expect(added.stdout).toContain("saved");
+    expect(sdk.client.createSavedKeywords).toHaveBeenCalledWith("prj_a10000000000000000000000", {
+      keywords: ["rank tracker", "already tracked"],
+    });
+
+    const deleted = await runCli(
+      [
+        "saved",
+        "delete",
+        "svkw_a10000000000000000000000",
+        "--project",
+        "prj_a10000000000000000000000",
+      ],
+      deps(),
+    );
+    expect(deleted.stdout).toContain("removed");
+    expect(sdk.client.deleteSavedKeyword).toHaveBeenCalledWith(
+      "prj_a10000000000000000000000",
+      "svkw_a10000000000000000000000",
+    );
+  });
+
+  it("validates required keyword text and saved keyword IDs", async () => {
+    const missingKeyword = await runCli(
+      ["saved", "add", "--project", "prj_a10000000000000000000000"],
+      deps(),
+    );
+    expect(missingKeyword.stderr).toContain("Pass at least one keyword");
+
+    const invalidId = await runCli(
+      [
+        "saved",
+        "delete",
+        "kw_a10000000000000000000000",
+        "--project",
+        "prj_a10000000000000000000000",
+      ],
+      deps(),
+    );
+    expect(invalidId.stderr).toContain("svkw_ public ID v3");
+    expect(sdk.client.deleteSavedKeyword).not.toHaveBeenCalled();
   });
 });
 

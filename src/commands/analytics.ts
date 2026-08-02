@@ -66,7 +66,7 @@ export async function commandAnalytics(ctx: CommandContext, rest: readonly strin
     if (limit > 200) throw new CliError("--limit must not exceed 200.");
     const paths = stringListFromArgs(ctx.args, "path", "paths");
     if (paths.length > 50) throw new CliError("Pass no more than 50 paths.");
-    const result = await client.listTrafficSnapshots(projectId, {
+    const result = await client.analytics.traffic.list(projectId, {
       endDate: required(getStringFlag(ctx.args, "end-date"), "Pass --end-date YYYY-MM-DD."),
       limit,
       offset: parseOffset(getStringFlag(ctx.args, "offset")),
@@ -90,7 +90,7 @@ export async function commandAnalytics(ctx: CommandContext, rest: readonly strin
       "Connection ID",
     );
     const query = getStringFlag(ctx.args, "query");
-    const result = await client.listSearchPerformanceQueryStats(projectId, {
+    const result = await client.analytics.searchPerformance.list(projectId, {
       ...(connectionId ? { connectionId } : {}),
       endDate: required(getStringFlag(ctx.args, "end-date"), "Pass --end-date YYYY-MM-DD."),
       limit,
@@ -107,7 +107,7 @@ export async function commandAnalytics(ctx: CommandContext, rest: readonly strin
 
   if (action === "sync") {
     const idempotencyKey = getStringFlag(ctx.args, "idempotency-key");
-    const result = await client.syncProjectTraffic(
+    const result = await client.analytics.traffic.sync(
       projectId,
       idempotencyKey ? { idempotencyKey } : undefined,
     );

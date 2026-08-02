@@ -13,7 +13,7 @@ import { assertPublicId } from "../public-id.js";
 import {
   CliError,
   type CommandContext,
-  collectPaginated,
+  listOrAll,
   parseIsoDate,
   parsePositiveInt,
   parseSignalPayload,
@@ -151,16 +151,16 @@ export async function commandSignals(ctx: CommandContext, rest: readonly string[
 
   if (action === "create") {
     const input = createSignalInput(ctx.args);
-    const result = await client.createSignal(input);
+    const result = await client.signals.create(input);
     return hasFlag(ctx.args, "json") ? renderJson(result) : signalSummary(result);
   }
 
   if (action === "list") {
     const filters = signalListFilters(ctx.args);
     const projectId = await resolveProjectId(client, ctx, settings.projectId);
-    const response = await collectPaginated(
-      (options) => client.listSignals(projectId, { ...filters, ...options }),
-      filters,
+    const response = await listOrAll(
+      () => client.signals.list(projectId, filters),
+      (cursor) => client.signals.iterate(projectId, { ...filters, cursor }),
       hasFlag(ctx.args, "all"),
     );
     return hasFlag(ctx.args, "json")

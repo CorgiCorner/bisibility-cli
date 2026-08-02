@@ -18,6 +18,7 @@ import { handlers as metaHandlers } from "./commands/meta.js";
 import { handlers as notificationHandlers } from "./commands/notifications.js";
 import { handlers as projectHandlers } from "./commands/projects.js";
 import { handlers as providerHandlers } from "./commands/providers.js";
+import { handlers as savedHandlers } from "./commands/saved.js";
 import { handlers as signalHandlers } from "./commands/signals.js";
 import { handlers as sitemapHandlers } from "./commands/sitemaps.js";
 import { handlers as teamHandlers } from "./commands/team.js";
@@ -69,6 +70,7 @@ const commandHandlers: Readonly<Record<string, CommandHandler>> = {
   openapi: metaHandlers.openapi,
   projects: projectHandlers.default,
   providers: providerHandlers.default,
+  saved: savedHandlers.default,
   signals: signalHandlers.default,
   sitemaps: sitemapHandlers.default,
   team: teamHandlers.default,

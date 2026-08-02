@@ -257,5 +257,10 @@ export function validatePublicIdArgs(args: ParsedArgs) {
 
   if (command === "views" && action === "delete") {
     assertOptionalPosition(positionalId, "viw", "Saved view ID");
+    return;
+  }
+
+  if (command === "saved" && action === "delete") {
+    assertOptionalPosition(positionalId, "svkw", "Saved keyword ID");
   }
 }

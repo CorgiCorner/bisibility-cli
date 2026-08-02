@@ -7,7 +7,7 @@ import {
   CliError,
   type CommandContext,
   alertRuleInput,
-  collectPaginated,
+  listOrAll,
   paginationOptions,
   required,
   resolveProjectId,
@@ -44,9 +44,10 @@ export async function commandAlerts(ctx: CommandContext, rest: readonly string[]
 
   if (action === "list") {
     const projectId = await resolveProjectId(client, ctx, settings.projectId);
-    const response = await collectPaginated(
-      (options) => client.listAlertRules(projectId, options),
-      paginationOptions(ctx.args),
+    const options = paginationOptions(ctx.args);
+    const response = await listOrAll(
+      () => client.alertRules.list(projectId, options),
+      (cursor) => client.alertRules.iterate(projectId, { ...options, cursor }),
       hasFlag(ctx.args, "all"),
     );
     return hasFlag(ctx.args, "json")
@@ -56,9 +57,10 @@ export async function commandAlerts(ctx: CommandContext, rest: readonly string[]
 
   if (action === "triggered") {
     const projectId = await resolveProjectId(client, ctx, settings.projectId);
-    const response = await collectPaginated(
-      (options) => client.listTriggeredAlerts(projectId, options),
-      paginationOptions(ctx.args),
+    const options = paginationOptions(ctx.args);
+    const response = await listOrAll(
+      () => client.alerts.list(projectId, options),
+      (cursor) => client.alerts.iterate(projectId, { ...options, cursor }),
       hasFlag(ctx.args, "all"),
     );
     return hasFlag(ctx.args, "json")
@@ -73,7 +75,7 @@ export async function commandAlerts(ctx: CommandContext, rest: readonly string[]
       "Triggered alert ID",
     );
     const projectId = await resolveProjectId(client, ctx, settings.projectId);
-    const result = await client.muteTriggeredAlert(projectId, alertId);
+    const result = await client.alerts.mute(projectId, alertId);
     return hasFlag(ctx.args, "json")
       ? renderJson(result)
       : renderKeyValues([
@@ -84,7 +86,7 @@ export async function commandAlerts(ctx: CommandContext, rest: readonly string[]
 
   if (action === "mark-read") {
     const projectId = await resolveProjectId(client, ctx, settings.projectId);
-    const result = await client.markProjectAlertsRead(projectId);
+    const result = await client.alerts.markAllRead({ projectId });
     return hasFlag(ctx.args, "json")
       ? renderJson(result)
       : renderKeyValues([["alerts updated", result.updated]]);
@@ -93,7 +95,7 @@ export async function commandAlerts(ctx: CommandContext, rest: readonly string[]
   if (action === "create") {
     const input = alertRuleInput(ctx.args, "alerts create");
     const projectId = await resolveProjectId(client, ctx, settings.projectId);
-    const result = await client.createAlertRule(projectId, input);
+    const result = await client.alertRules.create(projectId, input);
     if (hasFlag(ctx.args, "json")) {
       return renderJson(result);
     }
@@ -112,7 +114,7 @@ export async function commandAlerts(ctx: CommandContext, rest: readonly string[]
       "Alert rule ID",
     );
     const input = alertRuleInput(ctx.args, "alerts update") as UpdateAlertRuleInput;
-    const result = await client.updateAlertRule(ruleId, input);
+    const result = await client.alertRules.update(ruleId, input);
     if (hasFlag(ctx.args, "json")) {
       return renderJson(result);
     }
@@ -130,7 +132,7 @@ export async function commandAlerts(ctx: CommandContext, rest: readonly string[]
       "alr",
       "Alert rule ID",
     );
-    const result = await client.deleteAlertRule(ruleId);
+    const result = await client.alertRules.delete(ruleId);
     return hasFlag(ctx.args, "json")
       ? renderJson(result)
       : renderKeyValues([["deleted", yesNo(result.deleted)]]);

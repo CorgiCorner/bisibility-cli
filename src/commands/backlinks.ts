@@ -252,7 +252,7 @@ export async function commandBacklinksAnalyze(ctx: CommandContext, rest: readonl
     resultLimit,
     target,
   };
-  const response = await client.analyzeBacklinks(projectId, options);
+  const response = await client.backlinks.analyze(projectId, options);
   if (!options.estimateOnly && !response.data.cached) {
     paidLookupNotice(ctx, response.data.cost_cents);
   }
@@ -274,7 +274,7 @@ export async function commandBacklinksMore(ctx: CommandContext, rest: readonly s
   };
   const { client, settings } = await settingsAndClient(ctx);
   const projectId = await resolveProjectId(client, ctx, settings.projectId);
-  const response = await client.loadMoreBacklinkRows(projectId, options);
+  const response = await client.backlinks.extendSnapshot(projectId, options);
   if (!response.data.cached) {
     paidLookupNotice(ctx, response.data.cost_cents);
   }

@@ -39,7 +39,7 @@ export async function commandNotifications(ctx: CommandContext, rest: readonly s
   const projectId = await resolveProjectId(client, ctx, settings.projectId);
 
   if (action === "get") {
-    const result = await client.getNotificationPreferences(projectId);
+    const result = await client.notificationSettings.get(projectId);
     return hasFlag(ctx.args, "json")
       ? renderJson(result)
       : renderKeyValues(notificationPreferenceRows(result));
@@ -50,7 +50,7 @@ export async function commandNotifications(ctx: CommandContext, rest: readonly s
     if (!hasOwnProperties(input)) {
       throw new CliError("Pass at least one notification preference flag.");
     }
-    const result = await client.updateNotificationPreferences(projectId, input);
+    const result = await client.notificationSettings.update(projectId, input);
     return hasFlag(ctx.args, "json")
       ? renderJson(result)
       : renderKeyValues(notificationPreferenceRows(result));
