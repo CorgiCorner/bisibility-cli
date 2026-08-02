@@ -65,7 +65,11 @@ describe("OAuth PKCE login", () => {
     const callback = new URL(authorization.searchParams.get("redirect_uri") ?? "");
     callback.searchParams.set("code", "authorization-code");
     callback.searchParams.set("state", authorization.searchParams.get("state") ?? "");
-    expect(await fetch(callback)).toMatchObject({ status: 200 });
+    const callbackResponse = await fetch(callback);
+    expect(callbackResponse).toMatchObject({ status: 200 });
+    await expect(callbackResponse.text()).resolves.toBe(
+      "Bisibility CLI authorization complete. You can close this window.",
+    );
     await expect(login).resolves.toMatchObject({ accessToken: "opaque-access-token" });
   });
 

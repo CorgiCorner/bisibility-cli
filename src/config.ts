@@ -74,12 +74,12 @@ export function assertApiCredential(
   const problem = prefix ? `unsupported prefix "${prefix}"` : "unsupported format";
   if (source === "environment") {
     throw new Error(
-      `Invalid API credential from BISIBILITY_API_KEY: ${problem}. Replace or unset BISIBILITY_API_KEY, then run 'bisibility auth login'.`,
+      `Invalid API credential from BISIBILITY_API_KEY: ${problem}. Unset BISIBILITY_API_KEY or set a current credential.`,
     );
   }
   if (source === "flag") {
     throw new Error(
-      `Invalid API credential from --api-key: ${problem}. Remove --api-key and run 'bisibility auth login', or pass a supported credential.`,
+      `Invalid API credential from --api-key: ${problem}. Pass a current credential to --api-key, or remove the flag and run 'bisibility auth login'.`,
     );
   }
   if (source === "command") {

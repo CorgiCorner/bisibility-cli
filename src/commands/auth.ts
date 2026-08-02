@@ -30,6 +30,18 @@ export function authExpiry(args: ParsedArgs) {
   return expiresInDays as 30 | 90 | 365 | null;
 }
 
+function tokenCreationError(error: unknown) {
+  const detail =
+    error instanceof BisibilityApiError
+      ? (error.problem?.detail ?? error.message)
+      : error instanceof Error
+        ? error.message
+        : "Unknown error.";
+  return new CliError(
+    `Login succeeded in the browser, but the CLI could not create an API token: ${detail}`,
+  );
+}
+
 export async function commandAuthLogin(ctx: CommandContext) {
   const settings = await loadSettings(ctx.args, ctx.deps);
   const scope = authScope(ctx.args);
@@ -44,16 +56,13 @@ export async function commandAuthLogin(ctx: CommandContext) {
   let issued: Awaited<ReturnType<Client["account"]["tokens"]["create"]>>;
   try {
     const client = new BisibilityClient({
-      apiKey: oauth.accessToken,
+      accessToken: oauth.accessToken,
       baseUrl: settings.baseUrl,
       ...(ctx.deps.fetch ? { fetch: ctx.deps.fetch } : {}),
     });
     issued = await client.account.tokens.create({ expires_in_days: expiresInDays, name, scope });
   } catch (error) {
-    if (error instanceof BisibilityApiError) {
-      throw new CliError(error.problem?.detail ?? error.message);
-    }
-    throw error;
+    throw tokenCreationError(error);
   }
   const next = { ...(await readConfigFile(ctx.args, ctx.deps)), apiKey: issued.token };
   const path = await writeConfigFile(ctx.args, next, ctx.deps);

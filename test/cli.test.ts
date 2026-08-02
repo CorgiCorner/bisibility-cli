@@ -1152,7 +1152,7 @@ describe("config commands", () => {
     {
       args: ["projects", "list"],
       credential: "bsp_live_old",
-      expectedRecovery: "Replace or unset BISIBILITY_API_KEY, then run 'bisibility auth login'.",
+      expectedRecovery: "Unset BISIBILITY_API_KEY or set a current credential.",
       expectedSource: "BISIBILITY_API_KEY",
       prefix: "bsp_",
     },
@@ -1160,7 +1160,7 @@ describe("config commands", () => {
       args: ["projects", "list", "--api-key", "bsk_live_old"],
       credential: undefined,
       expectedRecovery:
-        "Remove --api-key and run 'bisibility auth login', or pass a supported credential.",
+        "Pass a current credential to --api-key, or remove the flag and run 'bisibility auth login'.",
       expectedSource: "--api-key",
       prefix: "bsk_",
     },
@@ -6068,7 +6068,7 @@ describe("auth status", () => {
     expect(oauth.loginWithPkce).toHaveBeenCalledWith("https://bisibility.com", expect.any(Object));
     expect(sdk.BisibilityClient).toHaveBeenCalledWith(
       expect.objectContaining({
-        apiKey: "oauth_access",
+        accessToken: "oauth_access",
         baseUrl: "https://eu.bisibility.com/api/v1",
       }),
     );
@@ -6214,7 +6214,24 @@ describe("auth status", () => {
 
     await expect(runCli(["auth", "login"], deps())).resolves.toMatchObject({
       exitCode: 1,
-      stderr: "Token creation is not allowed.\n",
+      stderr:
+        "Login succeeded in the browser, but the CLI could not create an API token: Token creation is not allowed.\n",
+    });
+  });
+
+  it("explains a local SDK failure after browser login succeeds", async () => {
+    oauth.loginWithPkce.mockResolvedValue({
+      accessToken: "oauth_access",
+      authorizeUrl: "https://cloud.test/authorize",
+    });
+    sdk.BisibilityClient.mockImplementationOnce(() => {
+      throw new Error("Credential exchange failed.");
+    });
+
+    await expect(runCli(["auth", "login"], deps())).resolves.toMatchObject({
+      exitCode: 1,
+      stderr:
+        "Login succeeded in the browser, but the CLI could not create an API token: Credential exchange failed.\n",
     });
   });
 

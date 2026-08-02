@@ -116,8 +116,9 @@ async function loopbackServer(
     }
     res
       .writeHead(200, { "Content-Type": "text/plain; charset=utf-8" })
-      .end("Bisibility CLI authorization complete. You can close this window.");
-    settle({ code });
+      .end("Bisibility CLI authorization complete. You can close this window.", () =>
+        settle({ code }),
+      );
   });
 
   for (const candidate of LOOPBACK_PORTS) {

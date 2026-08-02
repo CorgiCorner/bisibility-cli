@@ -2,6 +2,14 @@
 
 ## Unreleased
 
+## [0.4.2] - 2026-08-02
+
+- Fixed `auth login` to exchange OAuth access tokens for stored API credentials, explain
+  post-authorization token failures, and finish the browser response before closing the callback
+  server.
+- Improved invalid-credential errors with source-specific recovery steps for `--api-key`,
+  `BISIBILITY_API_KEY`, and the config file.
+
 ## [0.4.1] - 2026-08-02
 
 - Improved authentication errors to distinguish missing and invalid credentials, identify the
