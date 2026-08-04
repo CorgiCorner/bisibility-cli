@@ -10,8 +10,14 @@ import { CliError, type CommandContext, required } from "../context.js";
 // separate cloud host (`cloudUrl`) that may differ from the API base URL. Cross-
 // instance migration is intentional, so we build the cloud API base by joining the
 // cloud host with the documented `/api/v1` server prefix rather than reusing baseUrl.
+function withoutTrailingSlashes(value: string) {
+  let end = value.length;
+  while (end > 0 && value[end - 1] === "/") end -= 1;
+  return value.slice(0, end);
+}
+
 export function cloudApiBaseUrl(cloudUrl: string) {
-  const trimmed = cloudUrl.replace(/\/+$/, "");
+  const trimmed = withoutTrailingSlashes(cloudUrl);
   return trimmed.endsWith("/api/v1") ? trimmed : `${trimmed}/api/v1`;
 }
 

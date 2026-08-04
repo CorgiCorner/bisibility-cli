@@ -1,6 +1,6 @@
 {
   "name": "@bisibility/cli",
-  "version": "0.4.2",
+  "version": "0.4.3",
   "description": "Command-line client for Bisibility - run rank checks and read ranking history from your terminal.",
   "type": "module",
   "license": "Apache-2.0",
@@ -72,7 +72,7 @@
     "typecheck": "tsc --noEmit -p tsconfig.test.json"
   },
   "dependencies": {
-    "@bisibility/sdk": "^0.7.2",
+    "@bisibility/sdk": "^0.7.3",
     "semver": "^7.8.5"
   },
   "devDependencies": {
@@ -85,6 +85,6 @@
     "vitest": "^3.2.4"
   },
   "overrides": {
-    "minimatch": "^10.2.5"
+    "minimatch": "^10.2.6"
   }
 }

@@ -2,6 +2,13 @@
 
 ## Unreleased
 
+## [0.4.3] - 2026-08-04
+
+- Fixed Cloud API URL normalization to handle long trailing-slash inputs without regular
+  expression backtracking.
+- Updated the SDK dependency and public development dependency resolution to fix the
+  high-severity `brace-expansion` denial-of-service advisory.
+
 ## [0.4.2] - 2026-08-02
 
 - Fixed `auth login` to exchange OAuth access tokens for stored API credentials, explain

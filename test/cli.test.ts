@@ -2,8 +2,10 @@ import { Buffer } from "node:buffer";
 import { mkdtemp, readFile, writeFile } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
+import { performance } from "node:perf_hooks";
 import { BisibilityApiError } from "@bisibility/sdk";
 import { beforeEach, describe, expect, it, vi } from "vitest";
+import { cloudApiBaseUrl } from "../src/commands/cloud.js";
 import { runCli } from "../src/index.js";
 import type { CliDeps } from "../src/index.js";
 import { PUBLIC_ID_PREFIXES } from "../src/public-id.js";
@@ -5608,6 +5610,38 @@ describe("export command", () => {
     const badAction = await runCli(["export", "unknown"], deps());
     expect(badAction.stderr).toContain("Export command must be rank-history or no subcommand");
   });
+});
+
+describe("cloud API base URL", () => {
+  it.each([
+    ["https://example.com", "https://example.com/api/v1"],
+    ["https://example.com/", "https://example.com/api/v1"],
+    ["https://example.com///", "https://example.com/api/v1"],
+    ["https://example.com/api/v1", "https://example.com/api/v1"],
+    ["", "/api/v1"],
+  ])("normalizes %s", (input, expected) => {
+    expect(cloudApiBaseUrl(input)).toBe(expected);
+  });
+
+  it("trims 100,000 trailing slashes promptly", () => {
+    const input = `https://example.com${"/".repeat(100_000)}`;
+    const startedAt = performance.now();
+    const result = cloudApiBaseUrl(input);
+    const elapsedMs = performance.now() - startedAt;
+
+    expect(result).toBe("https://example.com/api/v1");
+    expect(elapsedMs).toBeLessThan(1_000);
+  });
+
+  it("avoids backtracking on a long non-trailing slash run", () => {
+    const input = `https://example.com${"/".repeat(100_000)}x`;
+    const startedAt = performance.now();
+    const result = cloudApiBaseUrl(input);
+    const elapsedMs = performance.now() - startedAt;
+
+    expect(result).toBe(`${input}/api/v1`);
+    expect(elapsedMs).toBeLessThan(1_000);
+  }, 20_000);
 });
 
 describe("cloud import", () => {
