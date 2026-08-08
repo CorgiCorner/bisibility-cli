@@ -981,7 +981,7 @@ describe("help and top level parsing", () => {
   });
 });
 
-describe("public ID v3 boundary", () => {
+describe("public ID boundary", () => {
   const projectId = "prj_a10000000000000000000000";
   const validUnknownKeywordId = "kw_z00000000000000000000000";
 
@@ -1013,13 +1013,13 @@ describe("public ID v3 boundary", () => {
     ]);
   });
 
-  it("rejects wrong-prefix, short, mixed-case, and raw IDs before calling the API", async () => {
-    const rawCuid = `c${"a".repeat(24)}`;
+  it("rejects wrong-prefix, short, mixed-case, and malformed IDs before calling the API", async () => {
+    const malformedId = `c${"a".repeat(24)}`;
     const cases = [
       ["prj_a10000000000000000000000", "kw_ public ID"],
       ["kw_short", "kw_ public ID"],
       ["kw_A00000000000000000000000", "kw_ public ID"],
-      [rawCuid, "Raw or legacy IDs"],
+      [malformedId, "kw_ public ID"],
     ] as const;
 
     for (const [keywordId, message] of cases) {
@@ -1031,7 +1031,7 @@ describe("public ID v3 boundary", () => {
     expect(sdk.client.getKeyword).not.toHaveBeenCalled();
   });
 
-  it("passes an unknown but strict public ID v3 to the API", async () => {
+  it("passes an unknown but well-formed public ID to the API", async () => {
     sdk.client.getKeyword.mockResolvedValueOnce(keyword({ id: validUnknownKeywordId }));
 
     const result = await runCli(
@@ -2512,8 +2512,8 @@ describe("projects commands", () => {
     });
   });
 
-  it("rejects a created project with a raw ID before saving it as current", async () => {
-    const dir = await mkdtemp(join(tmpdir(), "bisibility-create-use-raw-id-"));
+  it("rejects a created project with a malformed ID before saving it as current", async () => {
+    const dir = await mkdtemp(join(tmpdir(), "bisibility-create-use-malformed-id-"));
     const config = join(dir, "config.json");
     sdk.client.createProject.mockResolvedValueOnce(project({ id: `c${"a".repeat(24)}` }));
 
@@ -2533,7 +2533,7 @@ describe("projects commands", () => {
     );
 
     expect(result.exitCode).toBe(1);
-    expect(result.stderr).toContain("Created project ID must use a public ID v3");
+    expect(result.stderr).toContain("Created project ID must be a prj_ public ID");
     await expect(readFile(config, "utf8")).rejects.toMatchObject({ code: "ENOENT" });
   });
 
@@ -2721,14 +2721,14 @@ describe("projects commands", () => {
     expect(missing.stderr).toContain("No .bisibility/project.json link was found");
   });
 
-  it("rejects a selected project with a raw ID before writing a directory link", async () => {
-    const dir = await mkdtemp(join(tmpdir(), "bisibility-project-link-raw-id-"));
+  it("rejects a selected project with a malformed ID before writing a directory link", async () => {
+    const dir = await mkdtemp(join(tmpdir(), "bisibility-project-link-malformed-id-"));
     sdk.client.listProjects.mockResolvedValueOnce(list([project({ id: `c${"a".repeat(24)}` })]));
 
     const result = await runCli(["link"], deps({ cwd: dir, homeDir: dir }));
 
     expect(result.exitCode).toBe(1);
-    expect(result.stderr).toContain("Selected project ID must use a public ID v3");
+    expect(result.stderr).toContain("Selected project ID must be a prj_ public ID");
     await expect(readFile(join(dir, ".bisibility", "project.json"), "utf8")).rejects.toMatchObject({
       code: "ENOENT",
     });
@@ -4745,7 +4745,7 @@ describe("saved keyword commands", () => {
       ],
       deps(),
     );
-    expect(invalidId.stderr).toContain("svkw_ public ID v3");
+    expect(invalidId.stderr).toContain("svkw_ public ID");
     expect(sdk.client.deleteSavedKeyword).not.toHaveBeenCalled();
   });
 });

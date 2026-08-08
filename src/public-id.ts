@@ -31,15 +31,15 @@ export type PublicIdForPrefix<Prefix extends PublicIdPrefix> = `${Prefix}_${stri
 
 const suffixPattern = "[a-z][a-z0-9]{23}";
 const anyPrefixPattern = PUBLIC_ID_PREFIXES.join("|");
-const rawCuidPattern = /^c[a-z0-9]{24}$/;
+const anyTypedPublicIdPattern = new RegExp(`^(?:${anyPrefixPattern})_`);
 
-export const PUBLIC_ID_V3_PATTERN = new RegExp(`^(?:${anyPrefixPattern})_${suffixPattern}$`);
+export const PUBLIC_ID_PATTERN = new RegExp(`^(?:${anyPrefixPattern})_${suffixPattern}$`);
 
 function isPublicIdOfType<Prefix extends PublicIdPrefix>(
   value: string,
   prefix: Prefix,
 ): value is PublicIdForPrefix<Prefix> {
-  return PUBLIC_ID_V3_PATTERN.test(value) && value.startsWith(`${prefix}_`);
+  return PUBLIC_ID_PATTERN.test(value) && value.startsWith(`${prefix}_`);
 }
 
 export function assertPublicId<Prefix extends PublicIdPrefix>(
@@ -50,12 +50,7 @@ export function assertPublicId<Prefix extends PublicIdPrefix>(
   if (isPublicIdOfType(value, prefix)) {
     return value;
   }
-  if (rawCuidPattern.test(value)) {
-    throw new Error(`${label} must use a public ID v3. Raw or legacy IDs are not accepted.`);
-  }
-  throw new Error(
-    `${label} must be a ${prefix}_ public ID v3 with a lowercase 24-character suffix.`,
-  );
+  throw new Error(`${label} must be a ${prefix}_ public ID with a lowercase 24-character suffix.`);
 }
 
 export function optionalPublicId<Prefix extends PublicIdPrefix>(
@@ -106,11 +101,11 @@ function assertProjectReference(value: string | undefined, label: string) {
   if (value === undefined) {
     return;
   }
-  if (PUBLIC_ID_V3_PATTERN.test(value)) {
+  if (PUBLIC_ID_PATTERN.test(value)) {
     assertPublicId(value, "prj", label);
     return;
   }
-  if (rawCuidPattern.test(value) || new RegExp(`^(?:${anyPrefixPattern})_`).test(value)) {
+  if (anyTypedPublicIdPattern.test(value)) {
     assertPublicId(value, "prj", label);
   }
 }

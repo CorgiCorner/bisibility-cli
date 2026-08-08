@@ -2,6 +2,11 @@
 
 ## Unreleased
 
+## [0.4.4] - 2026-08-08
+
+- Updated public ID documentation and validation errors to describe the current typed ID format,
+  while preserving strict resource-prefix and suffix validation.
+
 ## [0.4.3] - 2026-08-04
 
 - Fixed Cloud API URL normalization to handle long trailing-slash inputs without regular

@@ -174,15 +174,15 @@ Prefer environment variables in managed CI environments.
 
 ## Public IDs
 
-Resource IDs use public ID v3: a lowercase resource prefix, an underscore, and a 24-character
+Resource IDs use typed public IDs: a lowercase resource prefix, an underscore, and a 24-character
 lowercase alphanumeric suffix. For example:
 
 - project: `prj_a1b2c3d4e5f6g7h8j9k0m2n3`
 - keyword: `kw_b2c3d4e5f6g7h8j9k0m2n3p4`
 
-The CLI rejects raw database IDs, legacy IDs, mixed-case values, and IDs with the wrong resource
-prefix before sending a request. Commands document ID arguments as `<project-id>`, `<keyword-id>`,
-and similar placeholders so examples stay readable.
+The CLI rejects malformed resource IDs, mixed-case values, and IDs with the wrong resource prefix
+before sending a request. Commands document ID arguments as `<project-id>`, `<keyword-id>`, and
+similar placeholders so examples stay readable.
 
 Locations are different: use a `location_key` returned by `bisibility locations search`. Location
 resource IDs are not supported.
