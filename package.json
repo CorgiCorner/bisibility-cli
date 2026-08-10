@@ -1,6 +1,6 @@
 {
   "name": "@bisibility/cli",
-  "version": "0.5.0",
+  "version": "0.5.1",
   "description": "Command-line client for Bisibility - run rank checks and read ranking history from your terminal.",
   "type": "module",
   "license": "Apache-2.0",

@@ -122,7 +122,10 @@ export async function commandAuthLogout(ctx: CommandContext) {
 }
 
 export async function commandAuthStatus(ctx: CommandContext) {
-  const { client, settings } = await settingsAndClient(ctx, false);
+  const { client: anonymousClient, settings } = await settingsAndClient(ctx, false);
+  const client = settings.apiKey
+    ? new BisibilityClient({ apiKey: settings.apiKey, baseUrl: settings.baseUrl })
+    : anonymousClient;
   const base = {
     apiKey: redactSecret(settings.apiKey),
     baseUrl: settings.baseUrl,

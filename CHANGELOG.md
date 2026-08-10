@@ -2,6 +2,10 @@
 
 ## Unreleased
 
+## [0.5.1] - 2026-08-10
+
+- Fixed `auth status` so it uses configured credentials when listing projects.
+
 ## [0.5.0] - 2026-08-10
 
 - Preserved `providers primary` and `providers connect --primary` compatibility: a true primary

@@ -6386,6 +6386,10 @@ describe("auth status", () => {
       health: "ok",
       projects: [{ id: "prj_a10000000000000000000000" }],
     });
+    expect(sdk.BisibilityClient).toHaveBeenLastCalledWith({
+      apiKey,
+      baseUrl: "https://api.test/api/v1",
+    });
   });
 
   it("can report auth settings without network calls", async () => {
