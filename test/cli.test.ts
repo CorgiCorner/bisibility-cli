@@ -3804,7 +3804,7 @@ describe("analytics commands", () => {
 });
 
 describe("cost commands", () => {
-  it("estimates cost without an API key", async () => {
+  it("keeps cost estimates anonymous when an API key is configured", async () => {
     sdk.client.getCostEstimate.mockResolvedValueOnce({ data: costEstimate() });
 
     const result = await runCli(

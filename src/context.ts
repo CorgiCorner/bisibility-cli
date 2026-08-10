@@ -22,7 +22,6 @@ import {
   type ConfigDeps,
   assertApiCredential,
   findProjectLink,
-  isApiCredential,
   loadSettings,
   readConfigFile,
   writeConfigFile,
@@ -193,10 +192,7 @@ export async function settingsAndClient(ctx: CommandContext, requiresApiKey = tr
   if (requiresApiKey && settings.apiKey) {
     assertApiCredential(settings.apiKey, settings.apiKeySource ?? "config", settings.configPath);
   }
-  const apiKey =
-    settings.apiKey && (requiresApiKey || isApiCredential(settings.apiKey))
-      ? settings.apiKey
-      : undefined;
+  const apiKey = requiresApiKey ? settings.apiKey : undefined;
   const projectId = settings.projectId
     ? assertPublicId(settings.projectId, "prj", "Configured project ID")
     : undefined;

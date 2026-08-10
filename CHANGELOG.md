@@ -2,6 +2,12 @@
 
 ## Unreleased
 
+## [0.5.0] - 2026-08-10
+
+- Preserved `providers primary` and `providers connect --primary` compatibility: a true primary
+  value promotes priority `0`, while `--off` remains a legacy no-op.
+- Cost estimation remains anonymous even when a CLI credential is configured.
+
 ## [0.4.4] - 2026-08-08
 
 - Updated public ID documentation and validation errors to describe the current typed ID format,

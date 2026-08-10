@@ -601,8 +601,8 @@ Options:
   --cost-per-check <n>         Provider cost per check
   --priority <n>               Priority used by connect
   --enabled <true|false>       Enabled state used by connect
-  --primary                    Mark provider as primary during connect
-  --off                        Used with primary to unset primary
+  --primary                    Legacy true value promotes priority 0 during connect
+  --off                        Legacy no-op when used with providers primary
   --json                       Print JSON
 `;
 }

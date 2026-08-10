@@ -74,6 +74,8 @@ describe("help text", () => {
     expect(costHelp()).toContain("cost provider-rates");
     expect(costHelp()).toContain("--keywords <count>");
     expect(providersHelp()).toContain("--endpoint");
+    expect(providersHelp()).toContain("Legacy true value promotes priority 0 during connect");
+    expect(providersHelp()).toContain("Legacy no-op when used with providers primary");
     expect(projectsHelp()).toContain("projects defaults");
     expect(projectsHelp()).toContain("projects current");
     expect(projectsHelp()).toContain("projects use");
