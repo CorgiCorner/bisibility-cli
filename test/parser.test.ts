@@ -100,6 +100,27 @@ describe("parseArgv", () => {
     expect(hasFlag(metrics, "fresh")).toBe(true);
   });
 
+  it("parses Domain Overview market and page flags", () => {
+    const args = parseArgv([
+      "domain-overview",
+      "keywords",
+      "example.com",
+      "--location-code",
+      "2840",
+      "--language-code",
+      "en",
+      "--keyword-limit",
+      "50",
+      "--page-limit",
+      "250",
+    ]);
+
+    expect(getStringFlag(args, "location-code")).toBe("2840");
+    expect(getStringFlag(args, "language-code")).toBe("en");
+    expect(getStringFlag(args, "keyword-limit")).toBe("50");
+    expect(getStringFlag(args, "page-limit")).toBe("250");
+  });
+
   it("parses rank history export flags", () => {
     const args = parseArgv([
       "export",

@@ -304,7 +304,7 @@ vi.mock("@bisibility/sdk", () => {
     body: string | undefined;
     headers: Headers;
     method: string;
-    problem: { detail?: string } | undefined;
+    problem: { detail?: string; errors?: unknown } | undefined;
     status: number;
     url: string;
 
@@ -314,7 +314,7 @@ vi.mock("@bisibility/sdk", () => {
         body?: string;
         headers?: Headers;
         method?: string;
-        problem?: { detail?: string };
+        problem?: { detail?: string; errors?: unknown };
         status?: number;
         url?: string;
       } = {},
@@ -3264,6 +3264,33 @@ describe("rank checks", () => {
     const result = await runCli(["check", "kw_a10000000000000000000000"], deps());
 
     expect(result.stderr).toBe("API error 404: Keyword not found.\n");
+  });
+
+  it("preserves safe Problem Details extensions in API errors", async () => {
+    sdk.client.runRankCheck.mockRejectedValueOnce(
+      new BisibilityApiError("Provider rate limited.", {
+        body: undefined,
+        headers: new Headers({ "Retry-After": "42" }),
+        method: "POST",
+        problem: {
+          detail: "Provider rate limited.",
+          errors: {
+            cost_cents: 2.75,
+            reason: "rate_limited",
+            reset_at: 1_786_579_200,
+          },
+        },
+        status: 429,
+        url: "https://api.test/api/v1/keywords/kw_a10000000000000000000000/checks",
+      }),
+    );
+
+    const result = await runCli(["check", "kw_a10000000000000000000000"], deps());
+
+    expect(result.stderr).toBe(
+      "API error 429: Provider rate limited. Details: reason=rate_limited; cost_cents=2.75; reset_at=1786579200. Retry after 42s.\n",
+    );
+    expect(result.stderr).not.toContain("not charged");
   });
 });
 

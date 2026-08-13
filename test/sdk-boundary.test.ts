@@ -11,6 +11,7 @@ const approvedNamespaces = new Set([
   "apiKeys",
   "backlinks",
   "competitors",
+  "domainOverview",
   "imports",
   "keywords",
   "locations",

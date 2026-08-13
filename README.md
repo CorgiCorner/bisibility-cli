@@ -213,6 +213,36 @@ and lines beginning with `#` are ignored.
 Research and uncached metrics can spend the project's DataForSEO budget. Use `--estimate` before
 paid lookups and `--max-cost <cents>` as a best-effort request guard.
 
+### Domain Overview
+
+Domain Overview exposes domain-wide organic visibility, index history, ranked keywords, and top
+pages. Pass the provider's numeric location code and language code explicitly so automation does
+not silently change markets:
+
+```sh
+bisibility domain-overview analyze example.com \
+  --location-code 2840 \
+  --language-code en \
+  --estimate
+
+bisibility domain-overview analyze example.com \
+  --location-code 2840 \
+  --language-code en \
+  --max-cost 6
+
+bisibility domain-overview history example.com \
+  --location-code 2840 \
+  --language-code en \
+  --max-cost 12 \
+  --csv
+```
+
+Every Domain Overview operation runs a free estimate first. A positive estimate stops unless an
+explicit `--max-cost` cap authorizes the follow-up request. A zero estimate is followed by a
+cache-only request capped at zero, so cache drift cannot turn a free command into an uncapped paid
+lookup. `--json` returns the SDK data object unchanged; history, keywords, and pages also support
+row-oriented CSV output.
+
 `check --async` returns a running check immediately. Fetch it later with `check get`.
 
 ### Locations, analytics, and signals
@@ -249,7 +279,7 @@ Migration tokens can also come from `BISIBILITY_MIGRATION_TOKEN`.
 | --- | --- |
 | `auth`, `config`, `link`, `unlink` | Authentication and local project selection |
 | `projects`, `keywords`, `check` | Core rank-tracking workflows |
-| `backlinks`, `analytics`, `signals` | Research, traffic analytics, and events |
+| `backlinks`, `domain-overview`, `analytics`, `signals` | Research, traffic analytics, and events |
 | `cost`, `locations` | Public cost estimates and location discovery |
 | `alerts`, `sitemaps` | Alert rules, triggered alerts, and sitemap monitoring |
 | `providers`, `competitors`, `views` | Data providers and project configuration |

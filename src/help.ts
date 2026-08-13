@@ -21,6 +21,7 @@ Usage:
 Commands:
   backlinks analyze <target>  Analyze backlinks for a site or page
   backlinks more <target>     Load more rows into a backlinks snapshot
+  domain-overview ...         Analyze domain-wide organic visibility
   keywords add <keyword...>    Add one or more keywords
   keywords list                List keywords for a project
   keywords get <keyword-id>    Show one keyword
@@ -121,6 +122,43 @@ More options:
 These write-scope commands can make paid lookups on the project's DataForSEO
 account. Analyze snapshots are cached for 24 hours. Domains, pages, and anchors
 are aggregated locally within the fetched rows.
+`;
+}
+
+export function domainOverviewHelp() {
+  return `Usage:
+  bisibility domain-overview analyze <target> [options]
+  bisibility domain-overview history <target> [options]
+  bisibility domain-overview keywords <target> [options]
+  bisibility domain-overview pages <target> [options]
+
+Required market options:
+  --location-code <code>       Positive DataForSEO location code
+  --language-code <code>       DataForSEO language code, for example en
+
+Common options:
+  --project <id>, -p <id>      Project ID
+  --scope <scope>              root or subdomain; omitted means auto-detect
+  --fresh                      Skip an unexpired cache entry
+  --max-cost <cents>           Explicit non-negative provider-spend cap
+  --json                       Print the SDK data object without reshaping
+
+Analyze options:
+  --estimate                   Stop after the free estimate
+  --keyword-limit <n>          Initial keyword rows, 1 through 100; defaults to 100
+  --page-limit <n>             Initial page rows, 1 through 1000; defaults to 100
+
+History, keywords, and pages options:
+  --csv                        Print row data as CSV
+
+Keywords and pages options:
+  --limit <n>                  Rows: keywords 1-100, pages 1-1000; defaults to 100
+  --offset <n>                 Non-negative provider page offset; defaults to 0
+
+Every operation runs a free estimate first. A positive estimate requires an
+explicit --max-cost cap before the CLI starts the paid request. A zero estimate
+is sent with a zero cap, so a cache miss cannot spend unexpectedly. JSON output
+contains only the SDK data object; pricing notices are written to stderr.
 `;
 }
 
@@ -855,6 +893,7 @@ const helpByCommand: Readonly<Record<string, () => string>> = {
   competitors: competitorsHelp,
   config: configHelp,
   cost: costHelp,
+  "domain-overview": domainOverviewHelp,
   export: exportHelp,
   keywords: keywordsHelp,
   link: linkHelp,

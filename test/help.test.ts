@@ -9,6 +9,7 @@ import {
   competitorsHelp,
   configHelp,
   costHelp,
+  domainOverviewHelp,
   exportHelp,
   helpFor,
   keywordsAddHelp,
@@ -72,6 +73,9 @@ describe("help text", () => {
     expect(signalsHelp()).toContain("--happened-at");
     expect(signalsHelp()).toContain("search_engine_status");
     expect(costHelp()).toContain("cost provider-rates");
+    expect(domainOverviewHelp()).toContain("domain-overview analyze <target>");
+    expect(domainOverviewHelp()).toContain("--location-code <code>");
+    expect(domainOverviewHelp()).toContain("explicit --max-cost cap");
     expect(costHelp()).toContain("--keywords <count>");
     expect(providersHelp()).toContain("--endpoint");
     expect(providersHelp()).toContain("Legacy true value promotes priority 0 during connect");
@@ -119,6 +123,7 @@ describe("help text", () => {
     expect(helpFor(["signals", "create"])).toBe(signalsHelp());
     expect(helpFor(["cost"])).toBe(costHelp());
     expect(helpFor(["cost", "estimate"])).toBe(costHelp());
+    expect(helpFor(["domain-overview", "history"])).toBe(domainOverviewHelp());
     expect(helpFor(["projects"])).toBe(projectsHelp());
     expect(helpFor(["projects", "defaults"])).toBe(projectsHelp());
     expect(helpFor(["link"])).toBe(linkHelp());

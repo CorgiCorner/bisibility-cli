@@ -2,6 +2,11 @@
 
 ## Unreleased
 
+## [0.6.0] - 2026-08-13
+
+- Added estimate-first Domain Overview analysis, history, ranked-keyword, and top-page commands
+  with explicit provider-spend caps plus human, JSON, and row-oriented CSV output.
+
 ## [0.5.1] - 2026-08-10
 
 - Fixed `auth status` so it uses configured credentials when listing projects.

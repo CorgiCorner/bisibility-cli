@@ -9,6 +9,7 @@ import { handlers as cloudHandlers } from "./commands/cloud.js";
 import { handlers as competitorHandlers } from "./commands/competitors.js";
 import { handlers as configHandlers } from "./commands/config.js";
 import { handlers as costHandlers } from "./commands/cost.js";
+import { dispatchDomainOverview } from "./commands/domain-overview.js";
 import { handlers as exportHandlers } from "./commands/export.js";
 import { handlers as keywordHandlers } from "./commands/keywords.js";
 import { handlers as linkHandlers } from "./commands/link.js";
@@ -61,6 +62,7 @@ const commandHandlers: Readonly<Record<string, CommandHandler>> = {
   competitors: competitorHandlers.default,
   config: configHandlers.default,
   cost: costHandlers.default,
+  "domain-overview": dispatchDomainOverview,
   export: exportHandlers.default,
   keywords: dispatchKeywords,
   link: linkHandlers.link,
@@ -97,10 +99,30 @@ function retryAfterSuffix(error: BisibilityApiError) {
   return /^\d+$/.test(retryAfter) ? ` Retry after ${retryAfter}s.` : ` Retry after ${retryAfter}.`;
 }
 
+function problemExtensionSuffix(error: BisibilityApiError) {
+  const extensions = error.problem?.errors;
+  if (!extensions || typeof extensions !== "object" || Array.isArray(extensions)) return "";
+  const values = extensions as Record<string, unknown>;
+  const details: string[] = [];
+  if (typeof values.reason === "string" && values.reason) {
+    details.push(`reason=${values.reason}`);
+  }
+  if (typeof values.cost_cents === "number" && Number.isFinite(values.cost_cents)) {
+    details.push(`cost_cents=${values.cost_cents}`);
+  }
+  if (
+    (typeof values.reset_at === "number" && Number.isFinite(values.reset_at)) ||
+    (typeof values.reset_at === "string" && values.reset_at)
+  ) {
+    details.push(`reset_at=${values.reset_at}`);
+  }
+  return details.length ? ` Details: ${details.join("; ")}.` : "";
+}
+
 function errorMessage(error: unknown) {
   if (error instanceof BisibilityApiError) {
     const detail = error.problem?.detail ?? error.message;
-    return `API error ${error.status}: ${detail}${retryAfterSuffix(error)}`;
+    return `API error ${error.status}: ${detail}${problemExtensionSuffix(error)}${retryAfterSuffix(error)}`;
   }
   if (error instanceof Error) return error.message;
   return "Unknown error.";
