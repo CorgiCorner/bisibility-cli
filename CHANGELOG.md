@@ -2,6 +2,11 @@
 
 ## Unreleased
 
+## [0.7.0] - 2026-08-14
+
+- Added language-qualified market parity across keyword and location output, canonical market
+  input documentation, and CSV exports with new market columns appended after existing columns.
+
 ## [0.6.0] - 2026-08-13
 
 - Added estimate-first Domain Overview analysis, history, ranked-keyword, and top-page commands

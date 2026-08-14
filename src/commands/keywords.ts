@@ -296,6 +296,14 @@ function matchColumns() {
       value: (row: KeywordMatchTableRow) => row.match?.market.country_code,
     },
     {
+      header: "Language code",
+      value: (row: KeywordMatchTableRow) => row.match?.market.language_code,
+    },
+    {
+      header: "Language",
+      value: (row: KeywordMatchTableRow) => row.match?.market.language_label,
+    },
+    {
       header: "Device",
       value: (row: KeywordMatchTableRow) => row.match?.market.device,
     },
@@ -532,6 +540,9 @@ export function keywordSummary(keyword: Keyword) {
     ["device", keyword.device],
     ["country", keyword.country],
     ["location", keyword.location],
+    ["location key", keyword.location_key],
+    ["language code", keyword.language_code],
+    ["language", keyword.language_label],
     ["intent", keyword.intent],
     ["topic", keyword.topic],
     ["tags", keyword.tags.join(",")],

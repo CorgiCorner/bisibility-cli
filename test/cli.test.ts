@@ -406,8 +406,11 @@ function keyword(overrides: Record<string, unknown> = {}) {
     device: "desktop",
     id: "kw_a10000000000000000000000",
     intent: null,
+    language_code: "en",
+    language_label: "English",
     latest_position: 4,
     location: "United States",
+    location_key: "US",
     previous_position: 8,
     project_id: "prj_a10000000000000000000000",
     ranking_url: "https://example.com/page",
@@ -618,8 +621,10 @@ function keywordMatches(overrides: Record<string, unknown> = {}) {
         market: {
           country_code: "US",
           device: "desktop",
+          language_code: "es",
+          language_label: "Spanish",
           location: "United States",
-          location_key: "us",
+          location_key: "US@es",
         },
         matched_text: "rank tracker",
         previous_position: 8,
@@ -631,8 +636,10 @@ function keywordMatches(overrides: Record<string, unknown> = {}) {
         market: {
           country_code: "PL",
           device: "mobile",
+          language_code: "pl",
+          language_label: "Polish",
           location: "Poland",
-          location_key: "pl",
+          location_key: "PL",
         },
         matched_text: "rank tracker",
         previous_position: null,
@@ -1673,6 +1680,9 @@ describe("keywords commands", () => {
     expect(result.stdout).toContain("RANK TRACKER");
     expect(result.stdout).toContain("United States");
     expect(result.stdout).toContain("Poland");
+    expect(result.stdout).toContain("US@es");
+    expect(result.stdout).toContain("Spanish");
+    expect(result.stdout).toContain("Language code");
     expect(result.stdout).toContain("untracked keyword");
     expect(result.stdout).toContain("not tracked");
     expect(result.stdout).toContain("partial");
@@ -1952,14 +1962,27 @@ describe("keywords commands", () => {
     });
   });
 
-  it("lists keywords as a table and validates device values", async () => {
-    sdk.client.listKeywords.mockResolvedValueOnce(list([keyword()]));
+  it("lists language-qualified keywords as a table and validates device values", async () => {
+    sdk.client.listKeywords.mockResolvedValueOnce(
+      list([
+        keyword({ language_code: "es", language_label: "Spanish", location_key: "ES" }),
+        keyword({
+          id: "kw_a20000000000000000000000",
+          language_code: "en",
+          language_label: "English",
+          location_key: "ES@en",
+        }),
+      ]),
+    );
 
     const table = await runCli(
       ["keywords", "list", "--project", "prj_a10000000000000000000000"],
       deps(),
     );
     expect(table.stdout).toContain("kw_a10000000000000000000000  rank tracker");
+    expect(table.stdout).toContain("ES@en");
+    expect(table.stdout).toContain("language_code");
+    expect(table.stdout).toContain("English");
 
     const invalid = await runCli(
       ["keywords", "list", "--project", "prj_a10000000000000000000000", "--device", "tablet"],
@@ -1991,7 +2014,7 @@ describe("keywords commands", () => {
     );
   });
 
-  it("passes city, location key, intent, and topic when adding keywords", async () => {
+  it("passes a language-qualified location key unchanged when adding keywords", async () => {
     sdk.client.addKeywords.mockResolvedValueOnce({
       created: 1,
       results: [{ keyword: keyword(), status: "created" }],
@@ -2010,7 +2033,7 @@ describe("keywords commands", () => {
         "--city",
         "Krakow",
         "--location-key",
-        "pl-krakow",
+        "ES@en",
         "--intent",
         "commercial",
         "--topic",
@@ -2027,7 +2050,7 @@ describe("keywords commands", () => {
           intent: "commercial",
           keyword: "rank tracker",
           location: "Poland",
-          location_key: "pl-krakow",
+          location_key: "ES@en",
           topic: "tracking",
         },
       ],
@@ -2035,15 +2058,27 @@ describe("keywords commands", () => {
   });
 
   it("gets, updates, and deletes a keyword", async () => {
-    sdk.client.getKeyword.mockResolvedValueOnce(keyword({ intent: "commercial" }));
-    sdk.client.updateKeyword.mockResolvedValueOnce(keyword({ text: "rank tracker api" }));
+    const rawKeyword = keyword({ intent: "commercial", location_key: "ES@en" });
+    sdk.client.getKeyword.mockResolvedValue(rawKeyword);
+    sdk.client.updateKeyword.mockResolvedValueOnce(
+      keyword({ location_key: "ES@en", text: "rank tracker api" }),
+    );
     sdk.client.deleteKeyword.mockResolvedValueOnce(keyword());
 
     const got = await runCli(["keywords", "get", "kw_a10000000000000000000000"], deps());
     expect(got.exitCode).toBe(0);
     expect(got.stdout).toContain("rank tracker");
     expect(got.stdout).toContain("commercial");
+    expect(got.stdout).toContain("location key   ES@en");
+    expect(got.stdout).toContain("language code  en");
+    expect(got.stdout).toContain("language       English");
     expect(sdk.client.getKeyword).toHaveBeenCalledWith("kw_a10000000000000000000000");
+
+    const gotJson = await runCli(
+      ["keywords", "get", "kw_a10000000000000000000000", "--json"],
+      deps(),
+    );
+    expect(JSON.parse(gotJson.stdout)).toEqual(rawKeyword);
 
     const updated = await runCli(
       [
@@ -2057,7 +2092,7 @@ describe("keywords commands", () => {
         "--city",
         "Krakow",
         "--location-key",
-        "pl-krakow",
+        "ES@en",
         "--intent",
         "commercial",
         "--topic",
@@ -2078,11 +2113,13 @@ describe("keywords commands", () => {
       frequency: "daily",
       intent: "commercial",
       keyword: "rank tracker api",
-      location_key: "pl-krakow",
+      location_key: "ES@en",
       tags: ["api", "launch"],
       target_url: "https://example.com/api",
       topic: "tracking",
     });
+    expect(updated.stdout).toContain("location key   ES@en");
+    expect(updated.stdout).toContain("language code  en");
 
     const deleted = await runCli(["keywords", "delete", "kw_a10000000000000000000000"], deps());
     expect(deleted.stdout).toContain("deleted  kw_a10000000000000000000000");
@@ -2823,7 +2860,7 @@ describe("projects commands", () => {
         "--city",
         "Krakow",
         "--location-key",
-        "pl-krakow",
+        "ES@en",
         "--device",
         "mobile",
         "--frequency",
@@ -2847,7 +2884,7 @@ describe("projects commands", () => {
       device: "mobile",
       frequency: "weekly",
       jitter_minutes: 10,
-      location_key: "pl-krakow",
+      location_key: "ES@en",
       timezone: "Europe/Warsaw",
     });
   });
@@ -3552,6 +3589,7 @@ describe("location commands", () => {
         display_name: "Austin, Texas, United States",
         hl: "en",
         kind: "city",
+        language_code: "en",
         language_label: "English",
         location_key: "US/Texas/Austin",
         region_code: "TX",
@@ -3567,6 +3605,8 @@ describe("location commands", () => {
     const json = await runCli(["locations", "search", "Austin", "--json"], deps());
 
     expect(table.stdout).toContain("US/Texas/Austin");
+    expect(table.stdout).toContain("Language code");
+    expect(table.stdout).toContain("English");
     expect(JSON.parse(json.stdout).data[0].kind).toBe("city");
     expect(sdk.client.searchLocations).toHaveBeenNthCalledWith(1, {
       country: "US",
@@ -5473,14 +5513,18 @@ describe("export command", () => {
       version: 1,
     });
     expect(exported.keywords).toHaveLength(1);
+    expect(exported.keywords[0]).toEqual(keyword());
     expect(exported.rank_checks).toHaveLength(1);
+    expect(exported.rank_checks[0]).toEqual(rankCheck());
     expect(sdk.client.listRankChecks).toHaveBeenCalledWith("kw_a10000000000000000000000", {
       limit: 200,
     });
   });
 
   it("exports CSV without history", async () => {
-    sdk.client.listKeywords.mockResolvedValueOnce(list([keyword()]));
+    sdk.client.listKeywords.mockResolvedValueOnce(
+      list([keyword({ language_code: "en", language_label: "English", location_key: "ES@en" })]),
+    );
 
     const result = await runCli(
       ["export", "--project", "prj_a10000000000000000000000", "--format", "csv", "--no-history"],
@@ -5488,6 +5532,9 @@ describe("export command", () => {
     );
 
     expect(result.stdout).toContain("keyword_id,keyword,project_id");
+    expect(result.stdout).toContain("country,location,device,tags");
+    expect(result.stdout).toContain("check_error,location_key,language_code,language_label");
+    expect(result.stdout).toContain(",ES@en,en,English\n");
     expect(result.stdout).toContain(
       "kw_a10000000000000000000000,rank tracker,prj_a10000000000000000000000",
     );
@@ -5495,7 +5542,9 @@ describe("export command", () => {
   });
 
   it("exports CSV with paginated rank history", async () => {
-    sdk.client.listKeywords.mockResolvedValueOnce(list([keyword()]));
+    sdk.client.listKeywords.mockResolvedValueOnce(
+      list([keyword({ language_code: "en", language_label: "English", location_key: "ES@en" })]),
+    );
     sdk.client.listRankChecks
       .mockResolvedValueOnce(
         list([rankCheck({ id: "check_a10000000000000000000000" })], "cursor_2"),
@@ -5511,6 +5560,7 @@ describe("export command", () => {
 
     expect(result.stdout).toContain("check_a10000000000000000000000");
     expect(result.stdout).toContain("check_a20000000000000000000000");
+    expect(result.stdout.match(/,ES@en,en,English$/gm)).toHaveLength(2);
     expect(sdk.client.listRankChecks).toHaveBeenNthCalledWith(2, "kw_a10000000000000000000000", {
       cursor: "cursor_2",
       limit: 200,

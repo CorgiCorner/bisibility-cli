@@ -185,7 +185,9 @@ before sending a request. Commands document ID arguments as `<project-id>`, `<ke
 similar placeholders so examples stay readable.
 
 Locations are different: use a `location_key` returned by `bisibility locations search`. Location
-resource IDs are not supported.
+resource IDs are not supported. An unqualified key selects its default language, while an
+`@language` suffix selects another supported pair. For example, `ES` is the Spain market with its
+default language (Spanish), and `ES@en` selects English results for Spain.
 
 ## Common workflows
 
@@ -196,7 +198,7 @@ The examples below assume a default project selected with `bisibility projects u
 Set `KEYWORD_ID` and `CHECK_ID` to IDs returned by the preceding list and check commands.
 
 ```sh
-bisibility keywords add "rank tracker" "seo monitor" --country Poland --city Krakow
+bisibility keywords add "rank tracker" "seo monitor" --location-key ES@en
 bisibility keywords list --all --json
 bisibility keywords research "rank tracker" --estimate --max-cost 6
 bisibility keywords metrics --file keywords.txt --json
@@ -256,7 +258,8 @@ bisibility signals list --source deploy --all
 ```
 
 `--country` and `--location` both set the market country; `--location` takes precedence. Use
-`--city` for city-level targeting or `--location-key` for a canonical market key.
+`--city` for city-level targeting or `--location-key` for a canonical market key. The CLI passes
+qualified keys such as `ES@en` directly to the API; no separate language flag is needed.
 
 Signal payloads must be JSON objects no larger than 8KB after serialization. Writable signal
 sources are `api`, `cms`, and `deploy`.
@@ -265,13 +268,16 @@ sources are `api`, `cms`, and `deploy`.
 
 ```sh
 bisibility projects create --name "Example" --domain example.com --use
-bisibility projects defaults --country Poland --frequency daily
+bisibility projects defaults --location-key ES@en --frequency daily
 bisibility export --format json --output dump.json
 bisibility cloud import dump.json --token mig_... --dry-run
 ```
 
 Use `bisibility cloud compat` to check import compatibility before sending an export package.
 Migration tokens can also come from `BISIBILITY_MIGRATION_TOKEN`.
+
+Project defaults use the same market aliases as keyword commands: an unqualified key selects the
+default language and an `@language` suffix selects another supported country-language pair.
 
 ## Command groups
 

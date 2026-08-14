@@ -694,6 +694,9 @@ export function keywordColumns() {
     { header: "keyword", value: (keyword: Keyword) => keyword.text },
     { header: "device", value: (keyword: Keyword) => keyword.device },
     { header: "location", value: (keyword: Keyword) => keyword.location },
+    { header: "location_key", value: (keyword: Keyword) => keyword.location_key },
+    { header: "language_code", value: (keyword: Keyword) => keyword.language_code },
+    { header: "language_label", value: (keyword: Keyword) => keyword.language_label },
     { header: "position", value: (keyword: Keyword) => keyword.latest_position },
     { header: "target", value: (keyword: Keyword) => keyword.target_url },
   ];
@@ -718,6 +721,9 @@ export function rankCheckRows(keywords: readonly Keyword[], checks: readonly Ran
       keyword_id: keyword.id,
       latest_position: keyword.latest_position,
       location: keyword.location,
+      location_key: keyword.location_key,
+      language_code: keyword.language_code,
+      language_label: keyword.language_label,
       project_id: keyword.project_id,
       ranking_url: keyword.ranking_url,
       tags: keyword.tags,
@@ -769,6 +775,9 @@ export function exportHeaders() {
     "cost_cents",
     "status",
     "check_error",
+    "location_key",
+    "language_code",
+    "language_label",
   ];
 }
 

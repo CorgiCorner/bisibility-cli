@@ -15,6 +15,7 @@ function locationColumns() {
     { header: "Kind", value: (row: LocationSuggestion) => row.kind },
     { header: "Country", value: (row: LocationSuggestion) => row.country_code },
     { header: "Location key", value: (row: LocationSuggestion) => row.location_key },
+    { header: "Language code", value: (row: LocationSuggestion) => row.language_code },
     { header: "Language", value: (row: LocationSuggestion) => row.language_label },
   ];
 }

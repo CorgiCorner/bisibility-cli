@@ -48,6 +48,7 @@ describe("help text", () => {
     expect(keywordsHelp()).toContain("keywords bulk");
     expect(keywordsAddHelp()).toContain("--target-url");
     expect(keywordsAddHelp()).toContain("--location-key");
+    expect(keywordsAddHelp()).toContain("ES@en");
     expect(keywordsAddHelp()).toContain("NOT a city");
     expect(keywordsListHelp()).toContain("--all");
     expect(keywordsGetHelp()).toContain("keywords get <keyword-id>");
@@ -61,6 +62,8 @@ describe("help text", () => {
     expect(keywordsMetricsHelp()).toContain("--estimate");
     expect(keywordsMetricsHelp()).toContain("--max-cost <cents>");
     expect(locationsHelp()).toContain("locations search");
+    expect(locationsHelp()).toContain("unqualified location key");
+    expect(locationsHelp()).toContain("ES@en");
     expect(analyticsHelp()).toContain("analytics sync");
     expect(checkHelp()).toContain("check <keyword-id>");
     expect(checkHelp()).toContain("--async");
@@ -83,6 +86,7 @@ describe("help text", () => {
     expect(projectsHelp()).toContain("projects defaults");
     expect(projectsHelp()).toContain("projects current");
     expect(projectsHelp()).toContain("projects use");
+    expect(projectsHelp()).toContain("ES@en");
     expect(linkHelp()).toContain("bisibility link");
     expect(mainHelp()).toContain("link [project-id]");
     expect(apiKeysHelp()).toContain("api-keys create");

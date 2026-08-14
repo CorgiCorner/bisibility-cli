@@ -175,7 +175,8 @@ Options:
                                --country. It is NOT a city; use --city or
                                --location-key for city-level targeting.
   --city <city>                City inside the market country
-  --location-key <key>         Canonical location key; overrides country and city
+  --location-key <key>         Canonical location key; append @language for a non-default pair
+                               (for example ES@en); overrides country and city
   --intent <intent>            Search intent label
   --topic <topic>              Topic label
   --target-url <url>           Target URL for every keyword
@@ -207,7 +208,8 @@ Options:
                                over --country (not a city)
   --city <city>                City inside the market country
   --clear-city                 Clear the city
-  --location-key <key>         Canonical location key; overrides country and city
+  --location-key <key>         Canonical location key; append @language for a non-default pair
+                               (for example ES@en); overrides country and city
   --intent <intent>            Search intent label
   --clear-intent               Clear the intent
   --topic <topic>              Topic label
@@ -364,6 +366,9 @@ Options:
   --country <country>          Optional ISO code or supported country name
   --limit <n>                  Result limit, defaults to 20, maximum 100
   --json                       Print the raw API response
+
+An unqualified location key selects its default language. Append @language to
+select another supported pair, for example ES@en.
 `;
 }
 
@@ -495,7 +500,8 @@ Passing any defaults option below updates them.
   --country <country>          Default market country name
   --city <city>                Default city inside the market country
   --clear-city                 Clear the default city
-  --location-key <key>         Canonical location key; overrides country and city
+  --location-key <key>         Canonical location key; append @language for a non-default pair
+                               (for example ES@en); overrides country and city
   --device <desktop|mobile>    Default device
   --frequency <frequency>      paused, manual, daily, weekly, monthly, or custom_cron
   --cron-expression <cron>     Cron expression for custom_cron
