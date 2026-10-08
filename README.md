@@ -1,8 +1,8 @@
 # @bisibility/cli
 
-> Part of [bisibility](https://github.com/CorgiCorner/bisibility) - open-source keyword
-> rank tracking you can self-host and automate. This repository contains the command-line
-> interface for the Bisibility REST API.
+> Part of [bisibility](https://github.com/CorgiCorner/bisibility) - an open-source SEO
+> platform for keyword research, backlink analysis, and Google rank tracking. This repository
+> contains the command-line interface for the bisibility REST API.
 >
 > [Docs](https://bisibility.com/docs) ·
 > [API reference](https://bisibility.com/docs/api/overview) ·
@@ -191,7 +191,8 @@ default language (Spanish), and `ES@en` selects English results for Spain.
 
 ## Common workflows
 
-The examples below assume a default project selected with `bisibility projects use`.
+The examples below target CLI `0.8.0` and assume a default project selected with
+`bisibility projects use`.
 
 ### Keywords and rank checks
 
@@ -205,7 +206,7 @@ bisibility keywords metrics --file keywords.txt --json
 
 bisibility keywords get "$KEYWORD_ID"
 bisibility keywords update "$KEYWORD_ID" --frequency weekly
-bisibility check "$KEYWORD_ID" --async
+bisibility check "$KEYWORD_ID"
 bisibility check get "$CHECK_ID"
 ```
 
@@ -213,7 +214,24 @@ Use `keywords add --file <path>` for one keyword per line, or `--file -` for std
 and lines beginning with `#` are ignored.
 
 Research and uncached metrics can spend the project's DataForSEO budget. Use `--estimate` before
-paid lookups and `--max-cost <cents>` as a best-effort request guard.
+paid lookups and `--max-cost <cents>` as a best-effort request guard. A research `--estimate` run
+is a cost-only dry run. Human output summarizes the estimated costs; `--json` preserves the
+API envelope.
+
+### Backlinks
+
+```sh
+bisibility backlinks analyze example.com --estimate
+bisibility backlinks analyze example.com --limit 100 --max-cost 8
+bisibility backlinks analyze example.com --view domains --csv
+```
+
+`--estimate` is a free dry run that prints cost facts only: the normalized target, the provider,
+whether an unexpired snapshot exists, and the estimated cost. It carries no summary, history, or
+rows, so `--view` and `--csv` do not apply to it.
+Use the returned estimate to choose a whole-cent cap that covers the fractional-cent charge.
+A paid snapshot is cached for 24 hours, and filtering or grouping the rows you already paid for
+is free.
 
 ### Domain Overview
 
@@ -245,7 +263,10 @@ cache-only request capped at zero, so cache drift cannot turn a free command int
 lookup. `--json` returns the SDK data object unchanged; history, keywords, and pages also support
 row-oriented CSV output.
 
-`check --async` returns a running check immediately. Fetch it later with `check get`.
+`--async` does not select the server execution mode. A deployment can return a finished
+`check_` result or a queued `rcr_` run. The CLI prints the queued run ID and status. Follow
+the run through the REST rank-history endpoint until it reaches a terminal state. An `rcr_` run
+ID cannot be passed to `check get`, which accepts a finished `check_` ID.
 
 ### Locations, analytics, and signals
 
@@ -268,16 +289,40 @@ sources are `api`, `cms`, and `deploy`.
 
 ```sh
 bisibility projects create --name "Example" --domain example.com --use
-bisibility projects defaults --location-key ES@en --frequency daily
+bisibility projects defaults "$PROJECT_ID" --location-key ES@en --frequency daily
 bisibility export --format json --output dump.json
-bisibility cloud import dump.json --token mig_... --dry-run
 ```
 
-Use `bisibility cloud compat` to check import compatibility before sending an export package.
-Migration tokens can also come from `BISIBILITY_MIGRATION_TOKEN`.
+Set `PROJECT_ID` to an ID returned by `bisibility projects list`; `projects defaults` takes the
+project ID positionally.
+
+`bisibility export` writes a reporting export (schema v1), not a Cloud migration package.
+Cloud import requires a supported migration schema; obtain the package from the application
+migration flow and check it with `bisibility cloud compat`. Migration tokens can also come from
+`BISIBILITY_MIGRATION_TOKEN`. CLI `0.8.0` accepts migration schemas v5, v6 and v7 through
+the SDK compatibility verifier.
 
 Project defaults use the same market aliases as keyword commands: an unqualified key selects the
 default language and an `@language` suffix selects another supported country-language pair.
+
+The schedule options (`--frequency`, `--cron-expression`, `--jitter-minutes`, `--timezone`) are
+replaced as a whole. `--serp-depth` accepts 10, 20, 50 or 100 and keeps the stored depth when omitted.
+
+### Providers
+
+```sh
+bisibility providers connect dataforseo --login "$DFS_LOGIN" --secret "$DFS_PASSWORD"
+bisibility providers connect serpapi --provider-api-key "$SERPAPI_KEY"
+bisibility providers test plausible
+```
+
+`--priority` accepts values from 0 through 1000, with `0` promoting a provider. The legacy
+`--primary` flag also remains supported.
+Omitting `--priority` keeps a reconnected provider's place and appends a new one.
+
+For Plausible, `--login` is the site domain configured in Plausible (its `site_id`, such as
+`example.com`) and defaults to the project domain when omitted; `--provider-api-key` is the
+Plausible Stats API token. Use `--endpoint` only for a self-hosted instance.
 
 ## Command groups
 

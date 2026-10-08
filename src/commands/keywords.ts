@@ -7,8 +7,10 @@ import type {
   KeywordMatchResponse,
   KeywordMetricsResponse,
   KeywordMetricsRow,
+  KeywordResearchEstimate,
+  KeywordResearchEstimateSource,
   KeywordResearchMode,
-  KeywordResearchResponse,
+  KeywordResearchResult,
   KeywordResearchResultLimit,
   KeywordResearchRow,
   KeywordResearchSourceDiagnostic,
@@ -17,6 +19,7 @@ import type {
   RankedKeywordSuggestionsResponse,
   UpdateKeywordInput,
 } from "@bisibility/sdk";
+import { isKeywordResearchEstimate } from "@bisibility/sdk";
 import { renderJson, renderKeyValues, renderTable } from "../format.js";
 import { type ParsedArgs, getStringFlag, hasFlag } from "../parser.js";
 
@@ -126,7 +129,30 @@ function paidLookupNotice(ctx: CommandContext, costCents: number) {
   );
 }
 
-function researchHumanOutput(response: KeywordResearchResponse) {
+function researchEstimateColumns() {
+  return [
+    { header: "Source", value: (source: KeywordResearchEstimateSource) => source.source },
+    {
+      header: "Cache",
+      value: (source: KeywordResearchEstimateSource) => (source.cached ? "hit" : "miss"),
+    },
+    { header: "Cost", value: (source: KeywordResearchEstimateSource) => source.cost_cents },
+  ];
+}
+
+function researchEstimateOutput(estimate: KeywordResearchEstimate) {
+  return `Estimate only: nothing was fetched and nothing was charged.\nSources\n${renderTable(
+    estimate.sources,
+    researchEstimateColumns(),
+  )}\n${renderKeyValues([
+    ["provider", estimate.provider],
+    ["status", estimate.cached ? "cached" : "paid"],
+    ["estimated cost", `$${(estimate.cost_cents / 100).toFixed(2)}`],
+    ["cost cents", estimate.cost_cents],
+  ])}`;
+}
+
+function researchHumanOutput(response: KeywordResearchResult) {
   return `${renderTable(response.rows, researchColumns())}\nSources\n${renderTable(
     response.sources,
     researchSourceColumns(),
@@ -157,10 +183,10 @@ export async function commandKeywordsResearch(ctx: CommandContext, rest: readonl
     resultLimit,
     seed,
   });
-  if (!options.estimateOnly && !response.cached) paidLookupNotice(ctx, response.cost_cents);
-  return options.estimateOnly || hasFlag(ctx.args, "json")
-    ? renderJson(response)
-    : researchHumanOutput(response);
+  const estimate = isKeywordResearchEstimate(response);
+  if (!estimate && !response.cached) paidLookupNotice(ctx, response.cost_cents);
+  if (hasFlag(ctx.args, "json")) return renderJson(response);
+  return estimate ? researchEstimateOutput(response) : researchHumanOutput(response);
 }
 
 function keywordMetricInput(

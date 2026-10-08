@@ -12,6 +12,109 @@ afterEach(async () => {
 });
 
 describe("OAuth PKCE login", () => {
+  it("reports failed discovery without opening a browser", async () => {
+    const openBrowser = vi.fn();
+    await expect(
+      loginWithPkce("https://auth.example.com", {
+        fetch: vi
+          .fn<typeof fetch>()
+          .mockResolvedValue(new Response("unavailable", { status: 503 })),
+        openBrowser,
+      }),
+    ).rejects.toThrow("OAuth discovery failed with status 503");
+    expect(openBrowser).not.toHaveBeenCalled();
+  });
+
+  it.each([
+    [{ token_endpoint: "/token" }, "authorization_endpoint"],
+    [{ authorization_endpoint: "/authorize", token_endpoint: "" }, "token_endpoint"],
+  ])("rejects discovery without a usable %s endpoint", async (metadata, missing) => {
+    await expect(
+      loginWithPkce("https://auth.example.com", {
+        fetch: vi.fn<typeof fetch>().mockResolvedValue(Response.json(metadata)),
+        openBrowser: vi.fn(),
+      }),
+    ).rejects.toThrow(`OAuth discovery did not include ${missing}`);
+  });
+
+  it.each([
+    ["error=access_denied&error_description=Consent+declined", "access_denied: Consent declined"],
+    ["error=access_denied", "access_denied"],
+    ["", "OAuth callback did not include an authorization code"],
+  ])("handles rejected or incomplete callbacks: %s", async (parameters, message) => {
+    const transport = vi.fn<typeof fetch>().mockResolvedValue(
+      Response.json({
+        authorization_endpoint: "/authorize",
+        token_endpoint: "/token",
+      }),
+    );
+    await expect(
+      loginWithPkce("https://auth.example.com", {
+        fetch: transport,
+        openBrowser: async (authorizationUrl) => {
+          const authorization = new URL(authorizationUrl);
+          const callback = new URL(authorization.searchParams.get("redirect_uri") ?? "");
+          callback.search = parameters;
+          callback.searchParams.set("state", authorization.searchParams.get("state") ?? "");
+          expect(await fetch(callback)).toMatchObject({ status: 400 });
+        },
+      }),
+    ).rejects.toThrow(message);
+    expect(transport).toHaveBeenCalledTimes(1);
+  });
+
+  it.each([
+    [400, { error_description: "Authorization code expired" }, "Authorization code expired"],
+    [400, {}, "OAuth token exchange failed with status 400"],
+    [200, { access_token: 42 }, "OAuth token exchange failed with status 200"],
+  ])("rejects unsuccessful token responses: %s %s", async (status, payload, message) => {
+    const transport = vi
+      .fn<typeof fetch>()
+      .mockResolvedValueOnce(
+        Response.json({ authorization_endpoint: "/authorize", token_endpoint: "/token" }),
+      )
+      .mockResolvedValueOnce(Response.json(payload, { status }));
+    await expect(
+      loginWithPkce("https://auth.example.com", {
+        fetch: transport,
+        openBrowser: async (authorizationUrl) => {
+          const authorization = new URL(authorizationUrl);
+          const callback = new URL(authorization.searchParams.get("redirect_uri") ?? "");
+          callback.searchParams.set("state", authorization.searchParams.get("state") ?? "");
+          callback.searchParams.set("code", "accepted-code");
+          expect(await fetch(callback)).toMatchObject({ status: 200 });
+        },
+      }),
+    ).rejects.toThrow(message);
+    expect(transport).toHaveBeenCalledTimes(2);
+  });
+
+  it("ignores unrelated paths and opaque origins before accepting a valid callback", async () => {
+    const transport = vi
+      .fn<typeof fetch>()
+      .mockResolvedValueOnce(
+        Response.json({ authorization_endpoint: "/authorize", token_endpoint: "/token" }),
+      )
+      .mockResolvedValueOnce(Response.json({ access_token: "accepted-token" }));
+    await expect(
+      loginWithPkce("https://auth.example.com", {
+        fetch: transport,
+        openBrowser: async (authorizationUrl) => {
+          const authorization = new URL(authorizationUrl);
+          const callback = new URL(authorization.searchParams.get("redirect_uri") ?? "");
+          const unrelated = new URL("/favicon.ico", callback);
+          expect(await fetch(unrelated)).toMatchObject({ status: 404 });
+          callback.searchParams.set("state", authorization.searchParams.get("state") ?? "");
+          callback.searchParams.set("code", "accepted-code");
+          expect(await fetch(callback, { headers: { Origin: "null" } })).toMatchObject({
+            status: 403,
+          });
+          expect(await fetch(callback)).toMatchObject({ status: 200 });
+        },
+      }),
+    ).resolves.toMatchObject({ accessToken: "accepted-token" });
+  });
+
   it("reports browser progress and the fallback URL before the callback completes", async () => {
     const progress: string[] = [];
     let authorizeUrl = "";

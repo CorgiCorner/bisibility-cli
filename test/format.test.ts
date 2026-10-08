@@ -33,4 +33,30 @@ describe("format helpers", () => {
       renderCsv([{ id: "kw_a10000000000000000000000", text: "rank, tracker" }], ["id", "text"]),
     ).toBe('id,text\nkw_a10000000000000000000000,"rank, tracker"\n');
   });
+
+  it.each([
+    [null, ""],
+    [undefined, ""],
+    [true, "true"],
+    [false, "false"],
+    [42, "42"],
+    [42n, "42"],
+    [Symbol("label"), "label"],
+    [Symbol(), ""],
+    [function namedColumn() {}, "namedColumn"],
+    [{ value: "quoted" }, '"{""value"":""quoted""}"'],
+    ["line\nbreak", '"line\nbreak"'],
+  ])("preserves CSV scalar and structured values: %s", (input, expected) => {
+    expect(csvEscape(input)).toBe(expected);
+  });
+
+  it("renders missing table cells without losing valid zero values", () => {
+    const output = renderTable([null, undefined, "", 0], [{ header: "value", value: (v) => v }]);
+    expect(
+      output
+        .split("\n")
+        .slice(2, 6)
+        .map((line) => line.trim()),
+    ).toEqual(["-", "-", "-", "0"]);
+  });
 });

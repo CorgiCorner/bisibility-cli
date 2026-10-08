@@ -5,14 +5,19 @@ import { join } from "node:path";
 import { performance } from "node:perf_hooks";
 import { BisibilityApiError } from "@bisibility/sdk";
 import { beforeEach, describe, expect, it, vi } from "vitest";
-import { cloudApiBaseUrl } from "../src/commands/cloud.js";
+import {
+  arrayLength,
+  cloudApiBaseUrl,
+  parseImportPackage,
+  rankHistoryLength,
+} from "../src/commands/cloud.js";
 import { runCli } from "../src/index.js";
 import type { CliDeps } from "../src/index.js";
 import { PUBLIC_ID_PREFIXES } from "../src/public-id.js";
 
 const sdk = vi.hoisted(() => {
   type ListPage = { data: unknown[]; meta: { next_cursor: string | null } };
-  const iteratorFor = (list: ReturnType<typeof vi.fn>, optionsIndex: number) =>
+  const iteratorFor = (list: (...args: unknown[]) => unknown, optionsIndex: number) =>
     vi.fn(async function* (...args: unknown[]) {
       const initial = (args[optionsIndex] as Record<string, unknown> | undefined) ?? {};
       let cursor = initial.cursor as string | undefined;
@@ -290,7 +295,9 @@ const sdk = vi.hoisted(() => {
     },
   });
   return {
-    BisibilityClient: vi.fn(() => client),
+    BisibilityClient: vi.fn(function MockBisibilityClient() {
+      return client;
+    }),
     client,
   };
 });
@@ -299,7 +306,11 @@ const oauth = vi.hoisted(() => ({ loginWithPkce: vi.fn() }));
 
 vi.mock("../src/oauth.js", () => ({ loginWithPkce: oauth.loginWithPkce }));
 
-vi.mock("@bisibility/sdk", () => {
+vi.mock("@bisibility/sdk", async (importOriginal) => {
+  // Spread the real module so runtime helpers such as the estimate type guards stay in sync
+  // with the SDK; only the client and the error class are replaced with test doubles.
+  const actual = await importOriginal<typeof import("@bisibility/sdk")>();
+
   class BisibilityApiError extends Error {
     body: string | undefined;
     headers: Headers;
@@ -331,6 +342,7 @@ vi.mock("@bisibility/sdk", () => {
   }
 
   return {
+    ...actual,
     BisibilityApiError,
     BisibilityClient: sdk.BisibilityClient,
   };
@@ -503,12 +515,46 @@ function keywordResearch(overrides: Record<string, unknown> = {}) {
   };
 }
 
+function keywordResearchEstimate(overrides: Record<string, unknown> = {}) {
+  return {
+    cached: false,
+    connections: [
+      { id: "conn_a10000000000000000000000", label: "DataForSEO", provider: "dataforseo" },
+    ],
+    cost_cents: 6,
+    estimate: true,
+    provider: "DataForSEO",
+    sources: [
+      { cached: false, cost_cents: 6, source: "related" },
+      { cached: true, cost_cents: 0, source: "suggestion" },
+    ],
+    ...overrides,
+  };
+}
+
+function backlinksEstimate(overrides: Record<string, unknown> = {}) {
+  return {
+    data: {
+      cached: false,
+      cached_until: null,
+      cost_cents: 7,
+      estimate: true,
+      estimated_cost_cents: 7,
+      include_subdomains: true,
+      provider: "dataforseo",
+      target: "example.com",
+      target_scope: "site",
+      ...overrides,
+    },
+  };
+}
+
 function backlinksSnapshot(overrides: Record<string, unknown> = {}) {
   return {
     data: {
       cached: false,
       cached_until: "2026-07-25T15:00:00.000Z",
-      cost_cents: 5,
+      cost_cents: 7,
       fetched_at: "2026-07-24T15:00:00.000Z",
       fetched_row_count: 3,
       history: [],
@@ -1759,24 +1805,10 @@ describe("keywords commands", () => {
     expect(result.stderr).toBe("API error 403: Project access denied.\n");
   });
 
-  it("prints a free research estimate envelope and passes the request cost limit", async () => {
-    sdk.client.researchKeywords.mockResolvedValueOnce(
-      keywordResearch({
-        cost_cents: 6,
-        estimate: true,
-        rows: [],
-        sources: [
-          {
-            cached: false,
-            cost_cents: 6,
-            returned: 0,
-            source: "related",
-            status: "ok",
-          },
-        ],
-        total_count: 0,
-      }),
-    );
+  it("renders a cost-only research dry run and passes the request cost limit", async () => {
+    sdk.client.researchKeywords
+      .mockResolvedValueOnce(keywordResearchEstimate())
+      .mockResolvedValueOnce(keywordResearchEstimate());
 
     const result = await runCli(
       [
@@ -1791,10 +1823,31 @@ describe("keywords commands", () => {
       ],
       deps(),
     );
+    const json = await runCli(
+      [
+        "keywords",
+        "research",
+        "rank tracker",
+        "--project",
+        "prj_a10000000000000000000000",
+        "--estimate",
+        "--json",
+      ],
+      deps(),
+    );
 
     expect(result.exitCode).toBe(0);
-    expect(JSON.parse(result.stdout)).toMatchObject({ cost_cents: 6, estimate: true, rows: [] });
+    expect(result.stdout).toContain("Estimate only");
+    expect(result.stdout).toContain("Source      Cache  Cost");
+    expect(result.stdout).toContain("related     miss   6");
+    expect(result.stdout).toContain("suggestion  hit    0");
+    expect(result.stdout).toContain("estimated cost  $0.06");
+    expect(result.stdout).toContain("status          paid");
+    expect(result.stdout).not.toContain("Keyword");
+    expect(result.stdout).not.toContain("Returned");
     expect(result.stderr).toBe("");
+    expect(JSON.parse(json.stdout)).toMatchObject({ cost_cents: 6, estimate: true });
+    expect(JSON.parse(json.stdout).rows).toBeUndefined();
     expect(sdk.client.researchKeywords).toHaveBeenCalledWith(
       "prj_a10000000000000000000000",
       expect.objectContaining({ estimateOnly: true, maxCostCents: 7 }),
@@ -2163,7 +2216,7 @@ describe("keywords commands", () => {
 describe("backlinks commands", () => {
   it("maps analyze flags to SDK options and passes the JSON envelope through", async () => {
     sdk.client.analyzeBacklinks.mockResolvedValueOnce(
-      backlinksSnapshot({ estimate: true, estimated_cost_cents: 8 }),
+      backlinksEstimate({ cost_cents: 9, estimated_cost_cents: 9, target_scope: "page" }),
     );
 
     const result = await runCli(
@@ -2190,7 +2243,7 @@ describe("backlinks commands", () => {
 
     expect(result.exitCode).toBe(0);
     expect(JSON.parse(result.stdout)).toMatchObject({
-      data: { estimate: true, estimated_cost_cents: 8 },
+      data: { estimate: true, estimated_cost_cents: 9 },
     });
     expect(result.stderr).toBe("");
     expect(sdk.client.analyzeBacklinks).toHaveBeenCalledWith("prj_a10000000000000000000000", {
@@ -2231,7 +2284,7 @@ describe("backlinks commands", () => {
     expect(paid.stdout).toContain("reddit.com");
     expect(paid.stdout).toContain("  -");
     expect(paid.stderr).toBe(
-      "Paid lookup: $0.05 charged to your DataForSEO account (snapshot cached for 24h).\n",
+      "Paid lookup: $0.07 charged to your DataForSEO account (snapshot cached for 24h).\n",
     );
     expect(cached.stderr).toBe("");
     expect(JSON.parse(cached.stdout)).toMatchObject({ data: { cached: true, cost_cents: 0 } });
@@ -2305,7 +2358,7 @@ describe("backlinks commands", () => {
     expect(result.stdout).toContain("Fetched 2 more rows.");
     expect(result.stdout).toContain("203 / 1685");
     expect(result.stderr).toBe(
-      "Paid lookup: $0.05 charged to your DataForSEO account (snapshot cached for 24h).\n",
+      "Paid lookup: $0.07 charged to your DataForSEO account (snapshot cached for 24h).\n",
     );
     expect(sdk.client.loadMoreBacklinkRows).toHaveBeenCalledWith("prj_a10000000000000000000000", {
       includeSubdomains: false,
@@ -2333,6 +2386,55 @@ describe("backlinks commands", () => {
       target: "example.com",
       targetScope: "site",
     });
+  });
+
+  it("renders a cost-only dry run instead of an empty report", async () => {
+    const cachedEstimate = backlinksEstimate({
+      cached: true,
+      cached_until: "2026-07-25T15:00:00.000Z",
+      cost_cents: 0,
+    });
+    sdk.client.analyzeBacklinks
+      .mockResolvedValueOnce(backlinksEstimate())
+      .mockResolvedValueOnce(cachedEstimate);
+
+    const uncached = await runCli(
+      [
+        "backlinks",
+        "analyze",
+        "example.com",
+        "--project",
+        "prj_a10000000000000000000000",
+        "--estimate",
+      ],
+      deps(),
+    );
+    const cached = await runCli(
+      [
+        "backlinks",
+        "analyze",
+        "example.com",
+        "--project",
+        "prj_a10000000000000000000000",
+        "--estimate",
+        "--view",
+        "domains",
+      ],
+      deps(),
+    );
+
+    expect(uncached.exitCode).toBe(0);
+    expect(uncached.stdout).toContain("Estimate only");
+    expect(uncached.stdout).toContain("estimated cost      $0.07");
+    expect(uncached.stdout).toContain("status              paid");
+    expect(uncached.stdout).toContain("cached until        -");
+    expect(uncached.stdout).not.toContain("backlinks total");
+    expect(uncached.stdout).not.toContain("Source domain");
+    expect(uncached.stderr).toBe("");
+    expect(cached.stdout).toContain("status              cached");
+    expect(cached.stdout).toContain("estimated cost      $0.07");
+    expect(cached.stdout).toContain("cost cents          0");
+    expect(cached.stdout).not.toContain("Max DA");
   });
 
   it("validates analyze and more inputs before calling the SDK", async () => {
@@ -2871,6 +2973,8 @@ describe("projects commands", () => {
         "10",
         "--timezone",
         "Europe/Warsaw",
+        "--serp-depth",
+        "20",
       ],
       deps(),
     );
@@ -2885,8 +2989,32 @@ describe("projects commands", () => {
       frequency: "weekly",
       jitter_minutes: 10,
       location_key: "ES@en",
+      serp_depth: 20,
       timezone: "Europe/Warsaw",
     });
+  });
+
+  it("patches only the SERP depth and rejects an unsupported depth", async () => {
+    sdk.client.updateProjectDefaults.mockResolvedValueOnce(projectDefaults({ serp_depth: 50 }));
+
+    const patched = await runCli(
+      ["projects", "defaults", "prj_a10000000000000000000000", "--serp-depth", "50"],
+      deps(),
+    );
+    const invalid = await runCli(
+      ["projects", "defaults", "prj_a10000000000000000000000", "--serp-depth", "30"],
+      deps(),
+    );
+
+    expect(patched.exitCode).toBe(0);
+    expect(patched.stdout).toContain("serp depth      50");
+    expect(sdk.client.updateProjectDefaults).toHaveBeenCalledWith("prj_a10000000000000000000000", {
+      serp_depth: 50,
+    });
+    expect(sdk.client.getProjectDefaults).not.toHaveBeenCalled();
+    expect(invalid.exitCode).toBe(1);
+    expect(invalid.stderr).toContain("--serp-depth must be one of 10, 20, 50, 100");
+    expect(sdk.client.updateProjectDefaults).toHaveBeenCalledTimes(1);
   });
 
   it("reads project defaults when no defaults flag is given", async () => {
@@ -3144,6 +3272,25 @@ describe("rank checks", () => {
       { provider_id: "dataforseo" },
       { async: true },
     );
+  });
+
+  it("renders a queued async run that carries only a run id", async () => {
+    sdk.client.runRankCheck
+      .mockResolvedValueOnce({ id: "rcr_a10000000000000000000000", status: "queued" })
+      .mockResolvedValueOnce({ id: "rcr_a10000000000000000000000", status: "queued" });
+
+    const human = await runCli(["check", "run", "kw_a10000000000000000000000", "--async"], deps());
+    const json = await runCli(
+      ["check", "run", "kw_a10000000000000000000000", "--async", "--json"],
+      deps(),
+    );
+
+    expect(human.exitCode).toBe(0);
+    expect(human.stdout).toBe("run     rcr_a10000000000000000000000\nstatus  queued\n");
+    expect(JSON.parse(json.stdout)).toMatchObject({
+      id: "rcr_a10000000000000000000000",
+      status: "queued",
+    });
   });
 
   it("gets a single rank check result", async () => {
@@ -4452,7 +4599,7 @@ describe("providers commands", () => {
     );
     sdk.client.testProviderConnection.mockResolvedValueOnce({
       balance: 12.5,
-      message: "Credentials work.",
+      message: "Connected.",
       ok: true,
     });
 
@@ -4517,7 +4664,7 @@ describe("providers commands", () => {
       ],
       deps(),
     );
-    expect(tested.stdout).toContain("Credentials work");
+    expect(tested.stdout).toContain("Connected.");
     expect(sdk.client.testProviderConnection).toHaveBeenCalledWith(
       "prj_a10000000000000000000000",
       "dataforseo",
@@ -4532,7 +4679,7 @@ describe("providers commands", () => {
       providerConnection({ id: "conn_plausible000000000000000", provider: "plausible" }),
     );
     sdk.client.testProviderConnection.mockResolvedValueOnce({
-      message: "Credentials work.",
+      message: "Connected · example.com.",
       ok: true,
     });
 
@@ -4559,7 +4706,7 @@ describe("providers commands", () => {
       },
     );
 
-    await runCli(
+    const tested = await runCli(
       [
         "providers",
         "test",
@@ -4571,6 +4718,7 @@ describe("providers commands", () => {
       ],
       deps(),
     );
+    expect(tested.stdout).toContain("Connected · example.com.");
     expect(sdk.client.testProviderConnection).toHaveBeenCalledWith(
       "prj_a10000000000000000000000",
       "plausible",
@@ -4578,6 +4726,48 @@ describe("providers commands", () => {
         credentials: { endpoint: "https://plausible.example.com" },
       },
     );
+  });
+
+  it("promotes a provider with priority 0 on connect and rejects an out-of-range priority", async () => {
+    sdk.client.connectProvider.mockResolvedValueOnce(
+      providerConnection({ is_primary: true, priority: 0 }),
+    );
+
+    const promoted = await runCli(
+      [
+        "providers",
+        "connect",
+        "dataforseo",
+        "--project",
+        "prj_a10000000000000000000000",
+        "--priority",
+        "0",
+      ],
+      deps(),
+    );
+    const tooLarge = await runCli(
+      [
+        "providers",
+        "connect",
+        "dataforseo",
+        "--project",
+        "prj_a10000000000000000000000",
+        "--priority",
+        "1001",
+      ],
+      deps(),
+    );
+
+    expect(promoted.exitCode).toBe(0);
+    expect(promoted.stdout).toContain("priority    0");
+    expect(sdk.client.connectProvider).toHaveBeenCalledWith(
+      "prj_a10000000000000000000000",
+      "dataforseo",
+      { priority: 0 },
+    );
+    expect(tooLarge.exitCode).toBe(1);
+    expect(tooLarge.stderr).toContain("--priority must be an integer from 0 through 1000");
+    expect(sdk.client.connectProvider).toHaveBeenCalledTimes(1);
   });
 
   it("enables, disables, prioritizes, marks primary, and disconnects providers", async () => {
@@ -4990,7 +5180,7 @@ describe("new command validation and JSON output", () => {
     sdk.client.connectProvider.mockResolvedValueOnce(
       providerConnection({ id: "conn_json00000000000000000000" }),
     );
-    sdk.client.testProviderConnection.mockResolvedValueOnce({ message: "ok", ok: true });
+    sdk.client.testProviderConnection.mockResolvedValueOnce({ message: "Connected.", ok: true });
     sdk.client.enableProvider.mockResolvedValueOnce(providerConnection({ enabled: true }));
     sdk.client.disableProvider.mockResolvedValueOnce(providerConnection({ enabled: false }));
     sdk.client.setProviderPriority.mockResolvedValueOnce(providerConnection({ priority: 30 }));
@@ -5722,6 +5912,90 @@ describe("cloud API base URL", () => {
 });
 
 describe("cloud import", () => {
+  it.each(["null", '"text"', "{}", '{"version":"7"}'])(
+    "rejects ambiguous migration metadata before calling the SDK: %s",
+    (raw) => {
+      expect(() => parseImportPackage(raw, "migration.json")).toThrow("Cloud import expects");
+      expect(sdk.client.importCloudExport).not.toHaveBeenCalled();
+    },
+  );
+
+  it("reports missing metadata without inventing keyword or history counts", () => {
+    expect(arrayLength(null, "keywords")).toBeNull();
+    expect(arrayLength({ keywords: "unknown" }, "keywords")).toBeNull();
+    expect(rankHistoryLength(null)).toBeNull();
+    expect(rankHistoryLength({ keywords: "unknown" })).toBeNull();
+    expect(rankHistoryLength({ keywords: [null, {}, { rankingHistory: [1, 2] }] })).toBe(2);
+  });
+
+  it.each([
+    new Error("Network unavailable"),
+    new BisibilityApiError("Service unavailable", {
+      status: 503,
+      body: undefined,
+      headers: new Headers(),
+      method: "GET",
+      problem: undefined,
+      url: "https://cloud.example.com/api/v1",
+    }),
+  ])("preserves cloud import failure details: %s", async (error) => {
+    sdk.client.importCloudExport.mockRejectedValueOnce(error);
+    const dir = await mkdtemp(join(tmpdir(), "bisibility-cloud-error-"));
+    const file = join(dir, "migration.json");
+    await writeFile(file, '{"version":7,"keywords":[]}');
+    const result = await runCli(["cloud", "import", file, "--token", "mig_example"], deps());
+    expect(result.exitCode).toBe(1);
+    expect(result.stderr).toBe(`${error.message}\n`);
+  });
+
+  it.each([
+    [new Error("Network unavailable"), "Network unavailable"],
+    [
+      new BisibilityApiError("Service unavailable", {
+        status: 503,
+        body: undefined,
+        headers: new Headers(),
+        method: "GET",
+        problem: undefined,
+        url: "https://cloud.example.com/api/v1",
+      }),
+      "Service unavailable",
+    ],
+    [
+      new BisibilityApiError("Invalid request", {
+        status: 400,
+        body: undefined,
+        headers: new Headers(),
+        method: "GET",
+        url: "https://cloud.example.com/api/v1",
+        problem: { detail: "Instance unavailable" },
+      }),
+      "Instance unavailable",
+    ],
+  ])("preserves compatibility failure details: %s", async (error, message) => {
+    sdk.client.getCloudImportCompatibility.mockRejectedValueOnce(error);
+    const result = await runCli(["cloud", "compat"], deps());
+    expect(result.exitCode).toBe(1);
+    expect(result.stderr).toBe(`${message}\n`);
+  });
+
+  it("prints server-advertised compatibility versions verbatim as JSON", async () => {
+    const data = {
+      app_version: "1.2.3",
+      latest_migration: "0042",
+      schema_versions_supported: [6, 7, 8],
+    };
+    sdk.client.getCloudImportCompatibility.mockResolvedValueOnce(data);
+    const result = await runCli(["cloud", "compat", "--json"], deps());
+    expect(result.exitCode).toBe(0);
+    expect(JSON.parse(result.stdout)).toEqual(data);
+  });
+
+  it.each([6, 7])("accepts migration schema v%s without rewriting the package", (version) => {
+    const pkg = { keywords: [], version };
+    expect(parseImportPackage(JSON.stringify(pkg), "migration.json")).toEqual(pkg);
+  });
+
   it("pushes a JSON export package through the SDK with a migration token", async () => {
     const dir = await mkdtemp(join(tmpdir(), "bisibility-cli-"));
     const file = join(dir, "dump.json");
@@ -6335,7 +6609,7 @@ describe("auth status", () => {
       accessToken: "oauth_access",
       authorizeUrl: "https://cloud.test/authorize",
     });
-    sdk.BisibilityClient.mockImplementationOnce(() => {
+    sdk.BisibilityClient.mockImplementationOnce(function FailingBisibilityClient() {
       throw new Error("Credential exchange failed.");
     });
 

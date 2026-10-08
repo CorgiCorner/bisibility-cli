@@ -36,9 +36,9 @@ export function parseImportPackage(raw: string, fileName: string): CloudImportPa
       }.`,
     );
   }
-  if ((parsed as { version?: unknown }).version !== 5) {
+  if (![5, 6, 7].includes((parsed as { version?: number }).version ?? 0)) {
     throw new CliError(
-      `Cloud import expects a version 5 export package in ${fileName}. Version 4 and older packages are not accepted.`,
+      `Cloud import expects a version 5, 6, or 7 export package in ${fileName}. Version 4 and older packages are not accepted.`,
     );
   }
   return parsed as CloudImportPackage;

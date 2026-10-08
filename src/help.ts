@@ -107,7 +107,7 @@ Analyze options:
   --mode <mode>                as-is or one-per-domain; defaults to as-is
   --view <view>                links, domains, pages, or anchors; defaults to links
   --fresh                      Skip the unexpired snapshot and fetch new data
-  --estimate                   Print a free estimate envelope without spending
+  --estimate                   Print a free cost-only dry run without spending
   --max-cost <cents>           Best-effort maximum provider cost for this request
   --csv                        Print the selected view as CSV
   --json                       Print the API envelope
@@ -122,6 +122,10 @@ More options:
 These write-scope commands can make paid lookups on the project's DataForSEO
 account. Analyze snapshots are cached for 24 hours. Domains, pages, and anchors
 are aggregated locally within the fetched rows.
+
+A dry run returns cost facts only: the normalized target, the provider, whether
+an unexpired snapshot exists, and the estimated cost. It carries no summary,
+history, or rows, so --csv and --view do not apply to it.
 `;
 }
 
@@ -306,9 +310,13 @@ Options:
   --connection <id>            Eligible DataForSEO connection ID
   --clickstream                Use clickstream-refined volumes, roughly doubles cost
   --fresh                      Skip the shared cache read and fetch new data
-  --estimate                   Print a free estimate envelope without spending
+  --estimate                   Print a free cost-only dry run without spending
   --max-cost <cents>           Best-effort maximum provider cost for this request
   --json                       Print the API envelope
+
+A dry run returns cost facts only: one {source, cost, cache} line per planned
+source plus the aggregate cost. It carries no rows, fetch time, total count, or
+source statuses.
 
 This write-scope command makes an opt-in paid lookup on the project's DataForSEO account.
 The price depends on the selected source, clickstream roughly doubles the cost,
@@ -406,7 +414,7 @@ export function checkHelp() {
 
 Run options:
   --provider-id <id>           SERP provider ID
-  --async                      Queue the check and return immediately with status running
+  --async                      Return without waiting; the server selects the execution mode
   --json                       Print JSON
 
 List options:
@@ -503,11 +511,17 @@ Passing any defaults option below updates them.
   --location-key <key>         Canonical location key; append @language for a non-default pair
                                (for example ES@en); overrides country and city
   --device <desktop|mobile>    Default device
+  --serp-depth <n>             Default SERP results per rank check: 10, 20, 50, or 100
   --frequency <frequency>      paused, manual, daily, weekly, monthly, or custom_cron
   --cron-expression <cron>     Cron expression for custom_cron
   --clear-cron-expression      Clear the default cron expression
   --jitter-minutes <n>         Schedule jitter in minutes
   --timezone <tz>              IANA timezone name
+
+The schedule options (--frequency, --cron-expression, --jitter-minutes, and
+--timezone) are replaced as a whole. --serp-depth is independent of the
+schedule: omitting it keeps the stored depth, as does the stored stop-on-match
+setting.
 `;
 }
 
@@ -594,7 +608,8 @@ Options:
   --project <id>, -p <id>      Project ID
   --json                       Print JSON
 
-When monitor-id is omitted, the project ID is used as the monitor ID.
+A sitemap monitor ID is the project ID. When monitor-id is omitted, the resolved
+project ID is used.
 `;
 }
 
@@ -643,11 +658,20 @@ Options:
                                Plausible URL
   --credential <name=value>    Extra provider credential, can be repeated
   --cost-per-check <n>         Provider cost per check
-  --priority <n>               Priority used by connect
+  --priority <n>               Fallback priority from 0 through 1000
   --enabled <true|false>       Enabled state used by connect
   --primary                    Legacy true value promotes priority 0 during connect
   --off                        Legacy no-op when used with providers primary
   --json                       Print JSON
+
+Priority 0 promotes the provider and renumbers the fallback chain. On connect,
+omitting --priority keeps a reconnected provider's place and appends a new one.
+
+For Plausible, --login is the site domain configured in Plausible (its site_id,
+for example example.com) and defaults to the project domain when omitted, and
+--provider-api-key is the Stats API token. A successful test reports
+"Connected." for SERP providers, and the same word followed by a detail such as
+the resolved property or site for analytics providers.
 `;
 }
 
@@ -774,7 +798,7 @@ export function cloudImportHelp() {
 Options:
   --token <token>              Migration token, defaults to BISIBILITY_MIGRATION_TOKEN
   --cloud-url <url>            Cloud host, defaults to BISIBILITY_CLOUD_URL or config
-  --dry-run                    Validate and print the request summary without sending
+  --dry-run                    Preview package metadata without sending it
   --json                       Print JSON
 
 Import posts the JSON export package to POST /cloud/import on the cloud host,

@@ -7,7 +7,7 @@ import {
   type CommandContext,
   listOrAll,
   paginationOptions,
-  parseOptionalPositiveInt,
+  parseProviderPriority,
   providerConnectInput,
   providerTestInput,
   required,
@@ -94,7 +94,7 @@ export async function commandProviders(ctx: CommandContext, rest: readonly strin
       return providerConnectionOutput(ctx.args, result);
     }
     case "priority": {
-      const priority = parseOptionalPositiveInt(
+      const priority = parseProviderPriority(
         rest[2] ?? getStringFlag(ctx.args, "priority"),
         "priority",
       );

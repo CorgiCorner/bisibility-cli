@@ -383,6 +383,18 @@ export function parseOptionalPositiveInt(value: string | undefined, name: string
   return parsePositiveInt(value, name, 1);
 }
 
+/** Provider fallback priority: an integer from 0 through 1000, where 0 promotes the provider. */
+export function parseProviderPriority(value: string | undefined, name: string) {
+  if (value === undefined) {
+    return undefined;
+  }
+  const parsed = Number(value);
+  if (!Number.isInteger(parsed) || parsed < 0 || parsed > 1000) {
+    throw new CliError(`${name} must be an integer from 0 through 1000.`);
+  }
+  return parsed;
+}
+
 export function parseBoolean(value: string | undefined, name: string) {
   if (value === undefined) {
     return undefined;
@@ -567,7 +579,7 @@ export function providerConnectInput(args: ParsedArgs) {
   const login = getStringFlag(args, "login");
   const secret = getStringFlag(args, "secret");
   const costPerCheck = parseNumber(getStringFlag(args, "cost-per-check"), "--cost-per-check");
-  const priority = parseOptionalPositiveInt(getStringFlag(args, "priority"), "--priority");
+  const priority = parseProviderPriority(getStringFlag(args, "priority"), "--priority");
   const enabled = parseBoolean(getStringFlag(args, "enabled"), "--enabled");
   const credentials = providerCredentials(args);
 

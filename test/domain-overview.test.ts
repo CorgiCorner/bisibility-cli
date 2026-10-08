@@ -20,7 +20,9 @@ vi.mock("@bisibility/sdk", () => {
   }
   return {
     BisibilityApiError,
-    BisibilityClient: vi.fn(() => ({ domainOverview: sdk.client })),
+    BisibilityClient: vi.fn(function MockBisibilityClient() {
+      return { domainOverview: sdk.client };
+    }),
   };
 });
 

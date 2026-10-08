@@ -2,6 +2,12 @@
 
 ## Unreleased
 
+## [0.8.0] - 2026-10-07
+
+- Support project SERP depth settings and provider priority `0`.
+- Show cost-only estimates and queued rank-check IDs; accept Cloud migration schemas v6/v7 through the SDK.
+- Clarify provider credentials and workflow guidance, and include NOTICE in npm packages.
+
 ## [0.7.0] - 2026-08-14
 
 - Added language-qualified market parity across keyword and location output, canonical market

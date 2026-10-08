@@ -3,6 +3,7 @@ name: CI
 on:
   push:
     branches: [main]
+    tags: ["v*.*.*-rc.*"]
   pull_request:
 
 permissions:
@@ -13,7 +14,10 @@ jobs:
     # Registry-based CI for the public repository, where the published
     # @bisibility/sdk range resolves from npm. The private repository runs the
     # same checks through its own workflow instead, so this job is skipped there.
-    if: github.repository == 'CorgiCorner/bisibility-cli'
+    if: >-
+      github.repository == 'CorgiCorner/bisibility-cli' &&
+      (github.event_name != 'push' || startsWith(github.ref, 'refs/tags/') ||
+       !startsWith(github.event.head_commit.message, 'chore(release):'))
     runs-on: ${{ github.repository != 'CorgiCorner/bisibility-cli' && vars.CI_USE_DEPOT == 'true' && 'depot-ubuntu-24.04' || 'ubuntu-latest' }}
     timeout-minutes: 15
     steps:

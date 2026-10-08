@@ -1,4 +1,13 @@
 import { describe, expect, it } from "vitest";
+import {
+  alertRuleInput,
+  keywordFilters,
+  paginationOptions,
+  parseSignalPayload,
+  providerCredentials,
+  providerTestInput,
+  yesNo,
+} from "../src/context.js";
 import { getStringFlag, getStringFlags, hasFlag, parseArgv } from "../src/parser.js";
 
 describe("parseArgv", () => {
@@ -156,5 +165,99 @@ describe("parseArgv", () => {
   it("keeps a lone dash positional", () => {
     expect(parseArgv(["keywords", "add", "-"]).positionals).toEqual(["keywords", "add", "-"]);
     expect(getStringFlag(parseArgv(["keywords", "add", "--file", "-"]), "file")).toBe("-");
+  });
+
+  it("preserves optional keyword filters and pagination cursors", () => {
+    const args = parseArgv([
+      "--country",
+      "PL",
+      "--intent",
+      "commercial",
+      "--search",
+      "rank",
+      "--sort",
+      "position_desc",
+      "--tag",
+      "seo",
+      "--topic",
+      "visibility",
+      "--cursor",
+      "next-page",
+    ]);
+    expect(keywordFilters(args, 25)).toEqual({
+      country: "PL",
+      intent: "commercial",
+      search: "rank",
+      sort: "position_desc",
+      tag: "seo",
+      topic: "visibility",
+      cursor: "next-page",
+      limit: 25,
+    });
+    expect(paginationOptions(args)).toEqual({ cursor: "next-page", limit: 50 });
+  });
+
+  it("distinguishes omitted provider test credentials from explicit login data", () => {
+    expect(providerTestInput(parseArgv([]))).toEqual({});
+    expect(
+      providerTestInput(
+        parseArgv(["--login", "account", "--secret", "secret", "--credential", "region=eu"]),
+      ),
+    ).toEqual({
+      credentials: { region: "eu" },
+      login: "account",
+      secret: "secret",
+    });
+    expect(() => providerCredentials(parseArgv(["--credential", " =value"]))).toThrow(
+      "non-empty name",
+    );
+  });
+
+  it("rejects oversized signal payloads by UTF-8 byte length", () => {
+    expect(() => parseSignalPayload(JSON.stringify({ text: "é".repeat(4096) }))).toThrow("8KB");
+    expect(parseSignalPayload('{"revision":"abc"}')).toEqual({ revision: "abc" });
+    expect(yesNo(null)).toBeUndefined();
+    expect(yesNo(false)).toBe("no");
+  });
+
+  it("preserves advanced alert conditions and validates required names and conditions", () => {
+    expect(
+      alertRuleInput(
+        parseArgv([
+          "--name",
+          "Visibility",
+          "--condition",
+          "serp_feature_lost",
+          "--target-type",
+          "tag",
+          "--target-id",
+          "tag_a10000000000000000000000",
+          "--top-n",
+          "5",
+          "--change-pct",
+          "30",
+          "--serp-feature",
+          "featured_snippet",
+          "--competitor-domain",
+          "competitor.example.com",
+          "--disabled",
+        ]),
+        "alerts create",
+      ),
+    ).toMatchObject({
+      name: "Visibility",
+      target_ids: ["tag_a10000000000000000000000"],
+      top_n: 5,
+      change_pct: 30,
+      serp_feature: "featured_snippet",
+      competitor_domain: "competitor.example.com",
+      enabled: false,
+    });
+    expect(() =>
+      alertRuleInput(parseArgv(["--condition", "position_drop"]), "alerts create"),
+    ).toThrow("requires --name");
+    expect(() => alertRuleInput(parseArgv(["--name", "Visibility"]), "alerts create")).toThrow(
+      "requires --condition",
+    );
   });
 });

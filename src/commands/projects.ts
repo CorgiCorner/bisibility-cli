@@ -2,6 +2,7 @@ import type {
   Project,
   ProjectDefaults,
   ProjectDefaultsPatch,
+  SerpDepth,
   UpdateProjectInput,
 } from "@bisibility/sdk";
 import { renderJson, renderKeyValues, renderTable } from "../format.js";
@@ -21,6 +22,9 @@ import {
   settingsAndClient,
   yesNo,
 } from "../context.js";
+
+/** SERP depths accepted by PATCH /projects/{project_id}/defaults, mirroring the SDK union. */
+const SERP_DEPTHS: readonly SerpDepth[] = [10, 20, 50, 100];
 
 export function projectColumns(currentProjectId?: string) {
   return [
@@ -80,6 +84,17 @@ export function projectUpdateInput(args: ParsedArgs) {
   return input;
 }
 
+export function parseSerpDepth(value: string | undefined): SerpDepth | undefined {
+  if (value === undefined) {
+    return undefined;
+  }
+  const parsed = Number(value);
+  if (!(SERP_DEPTHS as readonly number[]).includes(parsed)) {
+    throw new CliError(`--serp-depth must be one of ${SERP_DEPTHS.join(", ")}.`);
+  }
+  return parsed as SerpDepth;
+}
+
 export function parseJitterMinutes(value: string | undefined) {
   if (value === undefined) {
     return undefined;
@@ -96,6 +111,7 @@ const projectDefaultsFlags = [
   "city",
   "location-key",
   "device",
+  "serp-depth",
   "frequency",
   "cron-expression",
   "jitter-minutes",
@@ -114,6 +130,7 @@ export function projectDefaultsInput(args: ParsedArgs) {
   const city = getStringFlag(args, "city");
   const locationKey = getStringFlag(args, "location-key");
   const device = parseDevice(getStringFlag(args, "device"));
+  const serpDepth = parseSerpDepth(getStringFlag(args, "serp-depth"));
   const frequency = parseFrequency(getStringFlag(args, "frequency"), "--frequency");
   const cronExpression = getStringFlag(args, "cron-expression");
   const jitterMinutes = parseJitterMinutes(getStringFlag(args, "jitter-minutes"));
@@ -140,6 +157,9 @@ export function projectDefaultsInput(args: ParsedArgs) {
   }
   if (device) {
     input.device = device;
+  }
+  if (serpDepth !== undefined) {
+    input.serp_depth = serpDepth;
   }
   if (frequency) {
     input.frequency = frequency;

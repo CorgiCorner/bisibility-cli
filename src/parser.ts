@@ -130,6 +130,7 @@ export const valueFlags = new Set([
   "scope",
   "search",
   "secret",
+  "serp-depth",
   "serp-feature",
   "severity",
   "since",

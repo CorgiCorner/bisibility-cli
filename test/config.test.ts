@@ -3,6 +3,7 @@ import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { describe, expect, it, vi } from "vitest";
 import {
+  assertApiCredential,
   cloudUrlFromBaseUrl,
   defaultConfigPath,
   findProjectLink,
@@ -240,5 +241,65 @@ describe("config helpers", () => {
     expect(cloudUrlFromBaseUrl("https://eu.bisibility.com/api/v1")).toBe("https://bisibility.com");
     expect(cloudUrlFromBaseUrl("https://host.test/api/v1")).toBe("https://host.test");
     expect(cloudUrlFromBaseUrl("not a url")).toBe("https://bisibility.com");
+  });
+
+  it("keeps credential errors actionable when no config path or known prefix exists", () => {
+    expect(() => assertApiCredential("bad", "config")).toThrow(
+      "from the config file: unsupported format",
+    );
+    expect(() => assertApiCredential("old_value", "config", "/config.json")).toThrow(
+      'unsupported prefix "old_"',
+    );
+    expect(normalizeConfigKey("base-url")).toBe("baseUrl");
+    expect(normalizeConfigKey("cloud-url")).toBe("cloudUrl");
+    expect(normalizeConfigKey("apiKey")).toBe("apiKey");
+    expect(
+      defaultConfigPath(parseArgv([]), { env: { BISIBILITY_CONFIG: "~" }, homeDir: "/home/me" }),
+    ).toBe("/home/me");
+  });
+
+  it("propagates filesystem failures instead of silently discarding configuration", async () => {
+    const denied = Object.assign(new Error("Access denied"), { code: "EACCES" });
+    const read = async () => {
+      throw denied;
+    };
+    await expect(readConfigFile(parseArgv([]), { readFile: read })).rejects.toBe(denied);
+    await expect(findProjectLink({ cwd: "/repo", readFile: read })).rejects.toBe(denied);
+    const write = vi.fn<typeof writeFile>();
+    await expect(
+      writeConfigFile(
+        parseArgv(["--config", "/config.json"]),
+        {},
+        {
+          chmod: vi.fn<typeof chmod>().mockRejectedValue(denied),
+          mkdir: async () => undefined,
+          writeFile: write,
+          platform: "linux",
+        },
+      ),
+    ).rejects.toBe(denied);
+    expect(write).not.toHaveBeenCalled();
+  });
+
+  it("does not treat non-filesystem read failures as missing files", async () => {
+    const read = async () => {
+      throw "unavailable";
+    };
+    await expect(readConfigFile(parseArgv([]), { readFile: read })).rejects.toBe("unavailable");
+    await expect(findProjectLink({ cwd: "/repo", readFile: read })).rejects.toBe("unavailable");
+  });
+
+  it("preserves a project link when its gitignore cannot be safely read", async () => {
+    const denied = Object.assign(new Error("Access denied"), { code: "EACCES" });
+    await expect(
+      writeProjectLink("prj_a10000000000000000000000", {
+        cwd: "/repo",
+        mkdir: async () => undefined,
+        writeFile: vi.fn<typeof writeFile>(),
+        readFile: async () => {
+          throw denied;
+        },
+      }),
+    ).rejects.toBe(denied);
   });
 });

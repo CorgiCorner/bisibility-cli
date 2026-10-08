@@ -67,6 +67,8 @@ describe("help text", () => {
     expect(analyticsHelp()).toContain("analytics sync");
     expect(checkHelp()).toContain("check <keyword-id>");
     expect(checkHelp()).toContain("--async");
+    expect(checkHelp()).toContain("server selects the execution mode");
+    expect(checkHelp()).not.toContain("status running");
     expect(checkHelp()).toContain("--status");
     expect(mainHelp()).toContain("signals create");
     expect(mainHelp()).toContain("cost estimate");
@@ -153,5 +155,10 @@ describe("help text", () => {
 
   it("documents reading project defaults without patch flags", () => {
     expect(projectsHelp()).toContain("With no defaults option, prints current project defaults.");
+  });
+
+  it("falls back to general help for absent paths and the keyword overview for unknown actions", () => {
+    expect(helpFor([])).toBe(mainHelp());
+    expect(helpFor(["keywords", "unknown"])).toBe(keywordsHelp());
   });
 });

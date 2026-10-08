@@ -1,9 +1,11 @@
 import type {
   AnalyzeBacklinksOptions,
   BacklinkRow,
+  BacklinksEstimate,
   BacklinksSnapshot,
   LoadMoreBacklinkRowsOptions,
 } from "@bisibility/sdk";
+import { isBacklinksEstimate } from "@bisibility/sdk";
 import { renderCsv, renderJson, renderKeyValues, renderTable } from "../format.js";
 import { getStringFlag, hasFlag } from "../parser.js";
 
@@ -84,6 +86,23 @@ function scopeOptions(ctx: CommandContext) {
     includeSubdomains: !hasFlag(ctx.args, "no-subdomains"),
     targetScope: hasFlag(ctx.args, "page") ? ("page" as const) : ("site" as const),
   };
+}
+
+function dollars(cents: number) {
+  return `$${(cents / 100).toFixed(2)}`;
+}
+
+function estimateSummary(estimate: BacklinksEstimate) {
+  return `Estimate only: nothing was fetched and nothing was charged.\n${renderKeyValues([
+    ["target", estimate.target],
+    ["scope", estimate.target_scope],
+    ["include subdomains", estimate.include_subdomains ? "yes" : "no"],
+    ["provider", estimate.provider],
+    ["status", estimate.cached ? "cached" : "paid"],
+    ["cached until", estimate.cached_until],
+    ["estimated cost", dollars(estimate.estimated_cost_cents)],
+    ["cost cents", estimate.cost_cents],
+  ])}`;
 }
 
 function paidLookupNotice(ctx: CommandContext, costCents: number) {
@@ -253,16 +272,21 @@ export async function commandBacklinksAnalyze(ctx: CommandContext, rest: readonl
     target,
   };
   const response = await client.backlinks.analyze(projectId, options);
-  if (!options.estimateOnly && !response.data.cached) {
-    paidLookupNotice(ctx, response.data.cost_cents);
+  const data = response.data;
+  const estimate = isBacklinksEstimate(data);
+  if (!estimate && !data.cached) {
+    paidLookupNotice(ctx, data.cost_cents);
   }
-  if (options.estimateOnly || hasFlag(ctx.args, "json")) {
+  if (hasFlag(ctx.args, "json")) {
     return renderJson(response);
   }
-  if (hasFlag(ctx.args, "csv")) {
-    return renderView(response.data, view, true);
+  if (estimate) {
+    return estimateSummary(data);
   }
-  return `${snapshotSummary(response.data)}\n${renderView(response.data, view, false)}`;
+  if (hasFlag(ctx.args, "csv")) {
+    return renderView(data, view, true);
+  }
+  return `${snapshotSummary(data)}\n${renderView(data, view, false)}`;
 }
 
 export async function commandBacklinksMore(ctx: CommandContext, rest: readonly string[]) {

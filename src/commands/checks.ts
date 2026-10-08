@@ -1,4 +1,9 @@
-import type { ListRankChecksOptions, ProviderId, RankCheck } from "@bisibility/sdk";
+import type {
+  ListRankChecksOptions,
+  ProviderId,
+  RankCheck,
+  RunRankCheckResult,
+} from "@bisibility/sdk";
 import { renderJson, renderKeyValues, renderTable } from "../format.js";
 import { type ParsedArgs, getStringFlag, hasFlag } from "../parser.js";
 import { assertPublicId } from "../public-id.js";
@@ -25,6 +30,20 @@ export function rankCheckSummary(result: RankCheck) {
     ["url", result.ranking_url],
     ["error", result.error],
   ]);
+}
+
+/**
+ * A deployment with a background worker answers `--async` with the queued run id instead of a
+ * finished check, so the queued variant carries only an id and a status.
+ */
+export function rankCheckRunSummary(result: RunRankCheckResult) {
+  if (result.status === "queued") {
+    return renderKeyValues([
+      ["run", result.id],
+      ["status", result.status],
+    ]);
+  }
+  return rankCheckSummary(result);
 }
 
 export function rankCheckColumns() {
@@ -79,7 +98,7 @@ export async function commandCheckRun(ctx: CommandContext, keywordId: string) {
   const result = hasFlag(ctx.args, "async")
     ? await client.rankChecks.run(resolvedKeywordId, input, { async: true })
     : await client.rankChecks.run(resolvedKeywordId, input);
-  return hasFlag(ctx.args, "json") ? renderJson(result) : rankCheckSummary(result);
+  return hasFlag(ctx.args, "json") ? renderJson(result) : rankCheckRunSummary(result);
 }
 
 export async function commandCheck(ctx: CommandContext, rest: readonly string[]) {
