@@ -216,7 +216,9 @@ export function validatePublicIdArgs(args: ParsedArgs) {
 
   if (command === "me" && action === "tokens" && positionalId === "revoke") {
     const tokenId = args.positionals[3];
-    assertOptionalPosition(tokenId, "pat", "Personal access token ID");
+    if (tokenId !== undefined && tokenId !== "current") {
+      assertPublicId(tokenId, "pat", "Personal access token ID");
+    }
     return;
   }
 

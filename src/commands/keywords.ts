@@ -393,10 +393,12 @@ function rankedSuggestionOptions(ctx: CommandContext): ListRankedKeywordSuggesti
     "conn",
     "Connection ID",
   );
+  const maxCost = getStringFlag(ctx.args, "max-cost");
   return {
     ...(connectionId ? { connectionId } : {}),
     fresh: hasFlag(ctx.args, "fresh"),
     limit,
+    ...(maxCost ? { maxCostCents: parsePositiveInt(maxCost, "--max-cost", 1) } : {}),
     offset: parseRankedOffset(getStringFlag(ctx.args, "offset")),
   };
 }
@@ -442,6 +444,12 @@ export async function commandKeywordsSuggestRanked(ctx: CommandContext) {
   const projectId = await resolveProjectId(client, ctx, settings.projectId);
   const options = rankedSuggestionOptions(ctx);
   const all = hasFlag(ctx.args, "all");
+  if (all && options.limit !== undefined && options.limit < 100) {
+    // The API only accepts offsets that are multiples of 100 (lib/api/ranked-keywords.ts),
+    // so paginating with a per-page limit below 100 would skip rows between consecutive
+    // offsets. Reject the combination rather than silently losing results.
+    throw new CliError("--all requires --limit 100 (the API offset step is 100).");
+  }
   const first = await client.keywords.suggestions.list(projectId, options);
   let paidCostCents = recordPaidLookup(ctx, first);
   if (!all) {

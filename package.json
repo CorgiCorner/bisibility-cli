@@ -1,6 +1,6 @@
 {
   "name": "@bisibility/cli",
-  "version": "0.8.0",
+  "version": "0.16.0",
   "description": "Command-line client for the bisibility SEO API: research, backlinks, rankings, analytics, and automation.",
   "type": "module",
   "license": "Apache-2.0",
@@ -72,7 +72,7 @@
     "typecheck": "tsc --noEmit -p tsconfig.test.json"
   },
   "dependencies": {
-    "@bisibility/sdk": "^0.15.0",
+    "@bisibility/sdk": "^0.16.0",
     "semver": "^7.8.5"
   },
   "devDependencies": {

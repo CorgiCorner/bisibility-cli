@@ -291,6 +291,7 @@ Options:
   --limit <n>                  Page size, defaults to 100, maximum 100
   --fresh                      Skip the shared cache read and fetch new data
   --all                        Fetch pages until total count, an empty page, or offset 900
+                               (requires --limit 100 so the offset step covers every row)
   --json                       Print the API envelope
 
 Paid lookup on a cache miss uses your DataForSEO account, about $0.02 per

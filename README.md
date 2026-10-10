@@ -191,7 +191,7 @@ default language (Spanish), and `ES@en` selects English results for Spain.
 
 ## Common workflows
 
-The examples below target CLI `0.8.0` and assume a default project selected with
+The examples below target CLI `0.16.0` and assume a default project selected with
 `bisibility projects use`.
 
 ### Keywords and rank checks
@@ -299,7 +299,7 @@ project ID positionally.
 `bisibility export` writes a reporting export (schema v1), not a Cloud migration package.
 Cloud import requires a supported migration schema; obtain the package from the application
 migration flow and check it with `bisibility cloud compat`. Migration tokens can also come from
-`BISIBILITY_MIGRATION_TOKEN`. CLI `0.8.0` accepts migration schemas v5, v6 and v7 through
+`BISIBILITY_MIGRATION_TOKEN`. CLI `0.16.0` accepts migration schemas v5, v6 and v7 through
 the SDK compatibility verifier.
 
 Project defaults use the same market aliases as keyword commands: an unqualified key selects the

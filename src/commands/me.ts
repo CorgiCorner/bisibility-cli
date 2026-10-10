@@ -77,11 +77,11 @@ async function commandMyTokens(ctx: CommandContext, rest: readonly string[]) {
   }
 
   if (action === "revoke") {
-    const tokenId = assertPublicId(
-      required(rest[1], "Pass a personal access token ID."),
-      "pat",
-      "Personal access token ID",
-    );
+    const raw = required(rest[1], "Pass a personal access token ID.");
+    const tokenId =
+      raw === "current"
+        ? ("current" as const)
+        : assertPublicId(raw, "pat", "Personal access token ID");
     const result = await client.account.tokens.revoke(tokenId);
     return hasFlag(ctx.args, "json")
       ? renderJson(result)

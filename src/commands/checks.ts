@@ -2,6 +2,7 @@ import type {
   ListRankChecksOptions,
   ProviderId,
   RankCheck,
+  RunRankCheckInput,
   RunRankCheckResult,
 } from "@bisibility/sdk";
 import { renderJson, renderKeyValues, renderTable } from "../format.js";
@@ -19,7 +20,24 @@ import {
   settingsAndClient,
 } from "../context.js";
 
+/**
+ * The API answers rank check reads with an optional `observation_completeness` discriminator
+ * (`"complete" | "truncated_by_stop_on_match" | "unknown"`) that distinguishes a confirmed
+ * no-position result from one where the SERP sweep was incomplete. The published SDK's
+ * `RankCheck` typing passes extra fields through without declaring them, so we widen the
+ * local view at the single point of use rather than vendor the SDK's shape.
+ */
+type RankCheckWithCompleteness = RankCheck & {
+  observation_completeness?: "complete" | "truncated_by_stop_on_match" | "unknown" | null;
+};
+
+function observationCompletenessLabel(check: RankCheckWithCompleteness) {
+  const value = check.observation_completeness;
+  return value === undefined ? null : value;
+}
+
 export function rankCheckSummary(result: RankCheck) {
+  const widened = result as RankCheckWithCompleteness;
   return renderKeyValues([
     ["check", result.id],
     ["keyword", result.keyword_id],
@@ -28,6 +46,7 @@ export function rankCheckSummary(result: RankCheck) {
     ["previous", result.previous_position],
     ["provider", result.provider],
     ["url", result.ranking_url],
+    ["coverage", observationCompletenessLabel(widened)],
     ["error", result.error],
   ]);
 }
@@ -54,6 +73,10 @@ export function rankCheckColumns() {
     { header: "position", value: (check: RankCheck) => check.position },
     { header: "previous", value: (check: RankCheck) => check.previous_position },
     { header: "provider", value: (check: RankCheck) => check.provider },
+    {
+      header: "coverage",
+      value: (check: RankCheck) => observationCompletenessLabel(check as RankCheckWithCompleteness),
+    },
     { header: "error", value: (check: RankCheck) => check.error },
   ];
 }
@@ -94,10 +117,15 @@ export async function commandCheckRun(ctx: CommandContext, keywordId: string) {
   const { client } = await settingsAndClient(ctx);
   const resolvedKeywordId = assertPublicId(keywordId, "kw", "Keyword ID");
   const providerId = getStringFlag(ctx.args, "provider-id");
-  const input = providerId ? { provider_id: parseProviderId(providerId) } : undefined;
+  const maxCost = getStringFlag(ctx.args, "max-cost");
+  const input: RunRankCheckInput = {
+    ...(providerId ? { provider_id: parseProviderId(providerId) } : {}),
+    ...(maxCost ? { max_cost_cents: parsePositiveInt(maxCost, "--max-cost", 1) } : {}),
+  };
+  const hasInput = Object.keys(input).length > 0;
   const result = hasFlag(ctx.args, "async")
-    ? await client.rankChecks.run(resolvedKeywordId, input, { async: true })
-    : await client.rankChecks.run(resolvedKeywordId, input);
+    ? await client.rankChecks.run(resolvedKeywordId, hasInput ? input : undefined, { async: true })
+    : await client.rankChecks.run(resolvedKeywordId, hasInput ? input : undefined);
   return hasFlag(ctx.args, "json") ? renderJson(result) : rankCheckRunSummary(result);
 }
 

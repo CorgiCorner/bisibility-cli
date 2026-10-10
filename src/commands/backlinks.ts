@@ -111,8 +111,21 @@ function paidLookupNotice(ctx: CommandContext, costCents: number) {
   );
 }
 
+/**
+ * The API's BacklinksSnapshot carries an optional `history_unavailable: true` discriminator
+ * (OpenAPI openapi-backlinks.ts) that marks a site-scope snapshot whose optional 12-month
+ * history fetch failed but kept summary and links intact. The published SDK's BacklinksSnapshot
+ * does not declare the field; the raw payload still carries it, so we widen the local view at
+ * the single point of use rather than vendor the SDK's shape.
+ */
+type BacklinksSnapshotWithHistoryFlag = BacklinksSnapshot & { history_unavailable?: boolean };
+
+function hasHistoryUnavailable(snapshot: BacklinksSnapshot): boolean {
+  return (snapshot as BacklinksSnapshotWithHistoryFlag).history_unavailable === true;
+}
+
 function snapshotSummary(snapshot: BacklinksSnapshot) {
-  return renderKeyValues([
+  const summary = renderKeyValues([
     ["target", snapshot.target],
     ["scope", snapshot.target_scope],
     ["include subdomains", snapshot.include_subdomains ? "yes" : "no"],
@@ -132,7 +145,11 @@ function snapshotSummary(snapshot: BacklinksSnapshot) {
     ["provider", snapshot.provider],
     ["status", snapshot.cached ? "cached" : "paid"],
     ["cost cents", snapshot.cached ? null : snapshot.cost_cents],
+    ["history", hasHistoryUnavailable(snapshot) ? "unavailable (last fetch failed)" : null],
   ]);
+  return hasHistoryUnavailable(snapshot)
+    ? `Warning: 12-month history is unavailable for this snapshot; summary and links are intact.\n${summary}`
+    : summary;
 }
 
 function linkView(rows: readonly BacklinkRow[]): ViewData {

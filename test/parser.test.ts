@@ -155,6 +155,24 @@ describe("parseArgv", () => {
     expect(getStringFlag(args, "out")).toBe("history.csv");
   });
 
+  it("interprets explicit boolean values after `=` for boolean flags", () => {
+    expect(hasFlag(parseArgv(["--fresh=false"]), "fresh")).toBe(false);
+    expect(hasFlag(parseArgv(["--fresh=0"]), "fresh")).toBe(false);
+    expect(hasFlag(parseArgv(["--fresh=no"]), "fresh")).toBe(false);
+    expect(hasFlag(parseArgv(["--fresh=off"]), "fresh")).toBe(false);
+    expect(hasFlag(parseArgv(["--fresh=true"]), "fresh")).toBe(true);
+    expect(hasFlag(parseArgv(["--fresh=1"]), "fresh")).toBe(true);
+    expect(hasFlag(parseArgv(["--fresh=yes"]), "fresh")).toBe(true);
+    expect(hasFlag(parseArgv(["--fresh=on"]), "fresh")).toBe(true);
+    expect(() => parseArgv(["--fresh=maybe"]).positionals).toThrow(
+      "Option --fresh expects a boolean value",
+    );
+    const bareOff = parseArgv(["--fresh", "--fresh=false"]);
+    expect(hasFlag(bareOff, "fresh")).toBe(false);
+    const offThenOn = parseArgv(["--fresh=false", "--fresh"]);
+    expect(hasFlag(offThenOn, "fresh")).toBe(true);
+  });
+
   it("throws for missing values and unknown options", () => {
     expect(() => parseArgv(["--project"])).toThrow("Option --project requires a value.");
     expect(() => parseArgv(["-x"])).toThrow("Unknown short option -x.");

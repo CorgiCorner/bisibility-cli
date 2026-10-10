@@ -177,6 +177,18 @@ function pushFlag(flags: Map<string, FlagPrimitive[]>, name: string, value: Flag
   flags.set(name, [value]);
 }
 
+const TRUE_FLAG_VALUES = new Set(["true", "1", "yes", "on"]);
+const FALSE_FLAG_VALUES = new Set(["false", "0", "no", "off"]);
+
+function parseBooleanFlagValue(name: string, rawValue: string): boolean {
+  const normalized = rawValue.toLowerCase();
+  if (TRUE_FLAG_VALUES.has(normalized)) return true;
+  if (FALSE_FLAG_VALUES.has(normalized)) return false;
+  throw new ArgParseError(
+    `Option --${name} expects a boolean value (true|false|1|0|yes|no|on|off).`,
+  );
+}
+
 function parseLongOption(
   argv: readonly string[],
   index: number,
@@ -193,7 +205,12 @@ function parseLongOption(
     throw new ArgParseError(`Unknown long option --${name}.`);
   }
   if (equalsIndex >= 0) {
-    pushFlag(flags, name, token.slice(equalsIndex + 1));
+    const rawValue = token.slice(equalsIndex + 1);
+    if (booleanFlags.has(name)) {
+      pushFlag(flags, name, parseBooleanFlagValue(name, rawValue));
+    } else {
+      pushFlag(flags, name, rawValue);
+    }
     return index;
   }
   if (booleanFlags.has(name)) {
@@ -265,7 +282,9 @@ export function parseArgv(argv: readonly string[]): ParsedArgs {
 }
 
 export function hasFlag(args: ParsedArgs, name: string) {
-  return args.flags.has(name);
+  const values = args.flags.get(name);
+  if (!values || values.length === 0) return false;
+  return values.at(-1) !== false;
 }
 
 export function getStringFlag(args: ParsedArgs, name: string) {

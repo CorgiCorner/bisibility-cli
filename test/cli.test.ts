@@ -1477,6 +1477,47 @@ describe("keywords commands", () => {
     );
   });
 
+  it("rejects --all combined with --limit below 100 so results are not skipped", async () => {
+    const result = await runCli(
+      [
+        "keywords",
+        "suggest-ranked",
+        "--project",
+        "prj_a10000000000000000000000",
+        "--all",
+        "--limit",
+        "10",
+      ],
+      deps(),
+    );
+
+    expect(result.exitCode).toBe(1);
+    expect(result.stderr).toContain("--all requires --limit 100 (the API offset step is 100).");
+    expect(sdk.client.listRankedKeywordSuggestions).not.toHaveBeenCalled();
+  });
+
+  it("forwards --max-cost on suggest-ranked requests as maxCostCents", async () => {
+    sdk.client.listRankedKeywordSuggestions.mockResolvedValueOnce(rankedSuggestions());
+
+    const result = await runCli(
+      [
+        "keywords",
+        "suggest-ranked",
+        "--project",
+        "prj_a10000000000000000000000",
+        "--max-cost",
+        "50",
+      ],
+      deps(),
+    );
+
+    expect(result.exitCode).toBe(0);
+    expect(sdk.client.listRankedKeywordSuggestions).toHaveBeenCalledWith(
+      "prj_a10000000000000000000000",
+      expect.objectContaining({ maxCostCents: 50 }),
+    );
+  });
+
   it("prints the ranked suggestion envelope as JSON", async () => {
     sdk.client.listRankedKeywordSuggestions.mockResolvedValueOnce(
       rankedSuggestions({ cached: true }),
@@ -2288,6 +2329,21 @@ describe("backlinks commands", () => {
     );
     expect(cached.stderr).toBe("");
     expect(JSON.parse(cached.stdout)).toMatchObject({ data: { cached: true, cost_cents: 0 } });
+  });
+
+  it("warns in human output when history_unavailable flags a failed history fetch", async () => {
+    const snapshotWithFlag = backlinksSnapshot();
+    (snapshotWithFlag.data as Record<string, unknown>).history_unavailable = true;
+    sdk.client.analyzeBacklinks.mockResolvedValueOnce(snapshotWithFlag);
+
+    const human = await runCli(
+      ["backlinks", "analyze", "example.com", "--project", "prj_a10000000000000000000000"],
+      deps(),
+    );
+    expect(human.exitCode).toBe(0);
+    expect(human.stdout).toContain("12-month history is unavailable");
+    expect(human.stdout).toContain("history");
+    expect(human.stdout).toContain("unavailable (last fetch failed)");
   });
 
   it("aggregates the domains view locally and exports the current view as CSV", async () => {
@@ -3239,6 +3295,47 @@ describe("rank checks", () => {
     expect(result.stdout).toContain("position  4");
     expect(sdk.client.runRankCheck).toHaveBeenCalledWith("kw_a10000000000000000000000", {
       provider_id: "dataforseo",
+    });
+  });
+
+  it("distinguishes a complete no-position check from an unknown observation", async () => {
+    sdk.client.runRankCheck.mockResolvedValueOnce(
+      rankCheck({
+        error: null,
+        observation_completeness: "complete",
+        position: null,
+        status: "completed",
+      }),
+    );
+    const complete = await runCli(["check", "kw_a10000000000000000000000"], deps());
+    expect(complete.exitCode).toBe(0);
+    expect(complete.stdout).toContain("coverage  complete");
+
+    sdk.client.runRankCheck.mockResolvedValueOnce(
+      rankCheck({
+        error: null,
+        observation_completeness: "unknown",
+        position: null,
+        status: "completed",
+      }),
+    );
+    const unknown = await runCli(["check", "kw_a10000000000000000000000"], deps());
+    expect(unknown.exitCode).toBe(0);
+    expect(unknown.stdout).toContain("coverage  unknown");
+  });
+
+  it("forwards --max-cost on check run as max_cost_cents", async () => {
+    sdk.client.runRankCheck.mockResolvedValueOnce(rankCheck());
+
+    const result = await runCli(
+      ["check", "kw_a10000000000000000000000", "--provider-id", "dataforseo", "--max-cost", "25"],
+      deps(),
+    );
+
+    expect(result.exitCode).toBe(0);
+    expect(sdk.client.runRankCheck).toHaveBeenCalledWith("kw_a10000000000000000000000", {
+      provider_id: "dataforseo",
+      max_cost_cents: 25,
     });
   });
 
@@ -6240,6 +6337,22 @@ describe("me commands", () => {
     );
     expect(revoked.stdout).toContain("2026-02-01T00:00:00.000Z");
     expect(sdk.client.revokeMyToken).toHaveBeenCalledWith("pat_a10000000000000000000000");
+  });
+
+  it("revokes the current token through the documented `current` alias", async () => {
+    sdk.client.revokeMyToken.mockResolvedValueOnce({
+      created_at: "2026-01-01T00:00:00.000Z",
+      expires_at: null,
+      id: "pat_a10000000000000000000000",
+      last_used_at: null,
+      name: "laptop",
+      prefix: "bsb_pat_live_abcd",
+      revoked_at: "2026-02-01T00:00:00.000Z",
+      scope: "read",
+    });
+    const result = await runCli(["me", "tokens", "revoke", "current"], deps());
+    expect(result.exitCode).toBe(0);
+    expect(sdk.client.revokeMyToken).toHaveBeenCalledWith("current");
   });
 
   it("validates me subcommands and token inputs", async () => {

@@ -2,6 +2,11 @@
 
 ## Unreleased
 
+## [0.16.0] - 2026-10-10
+
+- `--max-cost` now reaches suggest-ranked and rank-check requests, and `--fresh=false` no longer requests a fresh, potentially paid fetch.
+- `suggest-ranked --all --limit N` returns every result, `me tokens revoke current` accepts the `current` alias, and human/CSV output keeps ranking completeness and warns when backlinks history is unavailable.
+
 ## [0.8.0] - 2026-10-07
 
 - Support project SERP depth settings and provider priority `0`.
