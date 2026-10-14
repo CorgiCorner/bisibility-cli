@@ -365,3 +365,11 @@ npm run check
 ## License
 
 Licensed under the Apache License, Version 2.0. See [LICENSE](LICENSE) and [NOTICE](NOTICE).
+
+### Retained SEO reports
+
+`bisibility export rank-history --report-version 2 --json --all --project <id>` preserves the frozen report quality and scope while following every cursor. Changed metadata or repeated cursors stop the export instead of silently merging unrelated pages.
+
+`bisibility runs list --all --json --project <id>` and `bisibility runs get <run-id> --project <id>` read retained execution outcomes even when no ranking observation exists. `bisibility local history|results|listings|point-history|export` reads stored Local monitor evidence; use `bisibility local --help` for identifiers and selection options. These commands never launch scans or change schedules.
+
+Project default changes can be reviewed explicitly: `bisibility projects defaults <id> --preview <draft flags>` returns the signed draft, and `--review-json <json> <same draft flags>` submits the user-confirmed review. Previews require advertised server support so old servers cannot mistake them for writes.

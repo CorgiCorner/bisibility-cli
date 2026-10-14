@@ -2,6 +2,13 @@
 
 ## Unreleased
 
+## 0.17.0 - 2026-10-14
+
+- Add capability-checked project defaults previews and explicit signed review commands; previews leave settings unchanged.
+
+- Add versioned rank-history reports and complete cursor reads with preserved quality, scope, and original timestamps.
+- Add retained run outcomes and Local monitor history, results, point listings, and exports without starting paid checks.
+
 ## [0.16.0] - 2026-10-10
 
 - `--max-cost` now reaches suggest-ranked and rank-check requests, and `--fresh=false` no longer requests a fresh, potentially paid fetch.

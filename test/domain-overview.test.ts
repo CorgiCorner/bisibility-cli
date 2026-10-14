@@ -12,13 +12,15 @@ const sdk = vi.hoisted(() => {
   return { client };
 });
 
-vi.mock("@bisibility/sdk", () => {
+vi.mock("@bisibility/sdk", async (importOriginal) => {
+  const actual = await importOriginal<typeof import("@bisibility/sdk")>();
   class BisibilityApiError extends Error {
     headers = new Headers();
     problem: { detail?: string } | undefined;
     status = 500;
   }
   return {
+    ...actual,
     BisibilityApiError,
     BisibilityClient: vi.fn(function MockBisibilityClient() {
       return { domainOverview: sdk.client };

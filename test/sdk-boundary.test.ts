@@ -15,6 +15,7 @@ const approvedNamespaces = new Set([
   "imports",
   "keywords",
   "locations",
+  "localMonitors",
   "notificationSettings",
   "pricing",
   "projects",

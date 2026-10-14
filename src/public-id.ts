@@ -1,30 +1,7 @@
 import { type ParsedArgs, getStringFlag, getStringFlags } from "./parser.js";
 
-export const PUBLIC_ID_PREFIXES = [
-  "al",
-  "alr",
-  "audit",
-  "check",
-  "cmp",
-  "conn",
-  "dwh",
-  "ferry",
-  "imp",
-  "inv",
-  "key",
-  "kw",
-  "mbr",
-  "ntf",
-  "pat",
-  "prj",
-  "sid",
-  "sig",
-  "svkw",
-  "tag",
-  "usr",
-  "viw",
-  "we",
-] as const;
+export { PUBLIC_ID_PREFIXES } from "@bisibility/sdk";
+import { PUBLIC_ID_PREFIXES } from "@bisibility/sdk";
 
 export type PublicIdPrefix = (typeof PUBLIC_ID_PREFIXES)[number];
 export type PublicIdForPrefix<Prefix extends PublicIdPrefix> = `${Prefix}_${string}`;

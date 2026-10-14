@@ -15,6 +15,7 @@ const aliases = new Map<string, string>([
 ]);
 
 export const booleanFlags = new Set([
+  "preview",
   "all",
   "async",
   "clear-city",
@@ -44,6 +45,12 @@ export const booleanFlags = new Set([
 ]);
 
 export const valueFlags = new Set([
+  "review-json",
+  "as-of",
+  "report-version",
+  "stream",
+  "basis",
+  "segment",
   "api-key",
   "alert-email",
   "alert-in-app",

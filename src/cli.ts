@@ -19,6 +19,7 @@ import { handlers as metaHandlers } from "./commands/meta.js";
 import { handlers as notificationHandlers } from "./commands/notifications.js";
 import { handlers as projectHandlers } from "./commands/projects.js";
 import { handlers as providerHandlers } from "./commands/providers.js";
+import { dispatchLocal, dispatchRuns } from "./commands/retained-reports.js";
 import { handlers as savedHandlers } from "./commands/saved.js";
 import { handlers as signalHandlers } from "./commands/signals.js";
 import { handlers as sitemapHandlers } from "./commands/sitemaps.js";
@@ -68,6 +69,8 @@ const commandHandlers: Readonly<Record<string, CommandHandler>> = {
   link: linkHandlers.link,
   "llms-txt": metaHandlers.llmsText,
   locations: locationHandlers.default,
+  local: dispatchLocal,
+  runs: dispatchRuns,
   me: meHandlers.default,
   notifications: notificationHandlers.default,
   openapi: metaHandlers.openapi,

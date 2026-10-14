@@ -3,7 +3,7 @@ import { mkdtemp, readFile, writeFile } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { performance } from "node:perf_hooks";
-import { BisibilityApiError } from "@bisibility/sdk";
+import { BisibilityApiError, PUBLIC_ID_PREFIXES as sdkPublicIdPrefixes } from "@bisibility/sdk";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import {
   arrayLength,
@@ -1039,31 +1039,8 @@ describe("public ID boundary", () => {
   const validUnknownKeywordId = "kw_z00000000000000000000000";
 
   it("uses the canonical global public ID prefix registry", () => {
-    expect(PUBLIC_ID_PREFIXES).toEqual([
-      "al",
-      "alr",
-      "audit",
-      "check",
-      "cmp",
-      "conn",
-      "dwh",
-      "ferry",
-      "imp",
-      "inv",
-      "key",
-      "kw",
-      "mbr",
-      "ntf",
-      "pat",
-      "prj",
-      "sid",
-      "sig",
-      "svkw",
-      "tag",
-      "usr",
-      "viw",
-      "we",
-    ]);
+    expect(PUBLIC_ID_PREFIXES).toEqual(sdkPublicIdPrefixes);
+    expect(PUBLIC_ID_PREFIXES).toEqual(expect.arrayContaining(["lmn", "lmr", "lmt", "rcr"]));
   });
 
   it("rejects wrong-prefix, short, mixed-case, and malformed IDs before calling the API", async () => {

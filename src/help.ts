@@ -37,6 +37,8 @@ Commands:
   check <keyword-id>           Run one rank check
   check get <check-id>         Show one rank check result
   check list <keyword-id>      List rank checks for a keyword
+  runs list|get                Read retained rank-check executions
+  local ...                    Read retained Local monitor data
   signals create               Record a deploy, CMS, or API signal
   signals list                 List signals for a project
   cost estimate                Estimate monthly rank check cost, no API key needed
@@ -504,7 +506,11 @@ Update options (projects update):
 
 Defaults (GET or PATCH /projects/{id}/defaults):
 With no defaults option, prints current project defaults.
-Passing any defaults option below updates them.
+Passing defaults options below requests an update; scope changes require an explicit review.
+Use --preview first, then submit --review-json with the same draft options.
+
+  --preview                    Return a signed draft without saving defaults
+  --review-json <json>          Submit explicit review from that draft
 
   --country <country>          Default market country name
   --city <city>                Default city inside the market country
@@ -778,6 +784,11 @@ Options:
   --no-history                 Export keywords without rank history
 
 Rank history options:
+  --report-version <1|2>       Version 2 preserves evidence, quality, and scope
+  --stream <observations|attempts> Version 2 record stream
+  --basis <observed_at|recorded_at> Version 2 time basis
+  --from <ISO>, --to <ISO>     Version 2 observation interval
+  --all                        Follow every JSON report cursor
   --range <30|90|all>          History window
   --granularity <daily|weekly> Export granularity
   --keyword-id <id>            Filter by keyword ID, can be repeated
@@ -940,6 +951,8 @@ const helpByCommand: Readonly<Record<string, () => string>> = {
   "keywords:suggest-ranked": keywordsSuggestRankedHelp,
   "keywords:update": keywordsUpdateHelp,
   locations: locationsHelp,
+  local: localHelp,
+  runs: runsHelp,
   me: meHelp,
   notifications: notificationsHelp,
   openapi: openapiHelp,
@@ -959,4 +972,41 @@ export function helpFor(positionals: readonly string[]) {
   const [first, second] = positionals;
   const specificHelp = first === "keywords" && second ? helpByCommand[`keywords:${second}`] : null;
   return specificHelp?.() ?? (first ? helpByCommand[first]?.() : undefined) ?? mainHelp();
+}
+
+export function localHelp() {
+  return `Usage:
+  bisibility local history <monitor-id> [options]
+  bisibility local results <monitor-id> <run-id> [options]
+  bisibility local listings <monitor-id> <run-id> <target-id> [options]
+  bisibility local point-history <monitor-id> <run-id> <target-id> [options]
+  bisibility local export <monitor-id> <run-id> [options]
+
+Options:
+  --project <id>, -p <id>      Project ID
+  --as-of <ISO>               Frozen read timestamp with UTC milliseconds
+  --from <ISO>, --to <ISO>     History interval
+  --cursor <cursor>            History continuation cursor
+  --format <json|csv>          Export format, defaults to json
+  --output <file>, -o <file>   Write output to file
+
+All Local commands read stored data without starting scans or changing schedules.
+`;
+}
+export function runsHelp() {
+  return `Usage:
+  bisibility runs list [options]
+  bisibility runs get <run-id> [options]
+
+Options:
+  --project <id>, -p <id>      Project ID
+  --segment <history|planned>  Retained execution segment
+  --status <status,status>     Execution status selection
+  --limit <n>                  Page size, maximum 200
+  --cursor <cursor>            Continuation cursor
+  --all                        Follow all execution list pages
+  --json                       Preserve the API envelope
+
+Cancelled, blocked and deferred executions remain readable without observations.
+`;
 }

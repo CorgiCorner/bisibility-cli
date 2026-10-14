@@ -2,6 +2,7 @@ import type {
   Project,
   ProjectDefaults,
   ProjectDefaultsPatch,
+  ProjectDefaultsReview,
   SerpDepth,
   UpdateProjectInput,
 } from "@bisibility/sdk";
@@ -16,6 +17,7 @@ import {
   hasOwnProperties,
   parseDevice,
   parseFrequency,
+  parseJsonObject,
   required,
   resolveProjectId,
   saveGlobalProject,
@@ -300,8 +302,32 @@ export async function commandProjects(ctx: CommandContext, rest: readonly string
         "prj",
         "Project ID",
       );
-      const result = hasProjectDefaultsFlags(ctx.args)
-        ? await client.projects.updateDefaults(projectId, projectDefaultsInput(ctx.args))
+      const reviewRequested = hasFlag(ctx.args, "review-json");
+      const reviewJson = getStringFlag(ctx.args, "review-json");
+      if (reviewRequested && !reviewJson?.trim())
+        throw new CliError("--review-json requires a JSON object.");
+      if (hasFlag(ctx.args, "preview")) {
+        if (reviewRequested)
+          throw new CliError("Preview accepts draft settings without --review-json.");
+        return renderJson(
+          await client.projects.previewDefaults(projectId, projectDefaultsInput(ctx.args)),
+        );
+      }
+      if (reviewRequested && !hasProjectDefaultsFlags(ctx.args))
+        throw new CliError("--review-json requires the same defaults draft flags.");
+      const patch = hasProjectDefaultsFlags(ctx.args) ? projectDefaultsInput(ctx.args) : undefined;
+      const result = patch
+        ? await client.projects.updateDefaults(projectId, {
+            ...patch,
+            ...(reviewJson
+              ? {
+                  review: parseJsonObject(
+                    reviewJson,
+                    "--review-json",
+                  ) as unknown as ProjectDefaultsReview,
+                }
+              : {}),
+          })
         : await client.projects.getDefaults(projectId);
       return hasFlag(ctx.args, "json") ? renderJson(result) : projectDefaultsSummary(result);
     }
