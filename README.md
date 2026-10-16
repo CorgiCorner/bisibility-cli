@@ -191,7 +191,7 @@ default language (Spanish), and `ES@en` selects English results for Spain.
 
 ## Common workflows
 
-The examples below target CLI `0.16.0` and assume a default project selected with
+The examples below target CLI `0.17.1` and assume a default project selected with
 `bisibility projects use`.
 
 ### Keywords and rank checks
@@ -224,6 +224,7 @@ API envelope.
 bisibility backlinks analyze example.com --estimate
 bisibility backlinks analyze example.com --limit 100 --max-cost 8
 bisibility backlinks analyze example.com --view domains --csv
+bisibility backlinks more example.com --snapshot-ref "$SNAPSHOT_REF" --limit 100 --json
 ```
 
 `--estimate` is a free dry run that prints cost facts only: the normalized target, the provider,
@@ -232,6 +233,14 @@ rows, so `--view` and `--csv` do not apply to it.
 Use the returned estimate to choose a whole-cent cap that covers the fractional-cent charge.
 A paid snapshot is cached for 24 hours, and filtering or grouping the rows you already paid for
 is free.
+
+Set `SNAPSHOT_REF` to the opaque `snapshot_ref` from the latest successful `analyze` or
+`more` output. Human output prints `snapshot_ref`; JSON output exposes it at
+`data.snapshot_ref`. Pass it unchanged with `--snapshot-ref` when loading more rows, using
+the same target and scope flags (`--page` and `--no-subdomains`). Each successful `more`
+response returns a replacement reference for the next call. Estimates do not return a reference.
+If the reference is missing or stale, the server returns `409 snapshot_expired` before paid
+I/O. Run `analyze` again to obtain a current reference, then retry `more` with that value.
 
 ### Domain Overview
 
@@ -299,7 +308,7 @@ project ID positionally.
 `bisibility export` writes a reporting export (schema v1), not a Cloud migration package.
 Cloud import requires a supported migration schema; obtain the package from the application
 migration flow and check it with `bisibility cloud compat`. Migration tokens can also come from
-`BISIBILITY_MIGRATION_TOKEN`. CLI `0.16.0` accepts migration schemas v5, v6 and v7 through
+`BISIBILITY_MIGRATION_TOKEN`. CLI `0.17.1` accepts migration schemas v5, v6 and v7 through
 the SDK compatibility verifier.
 
 Project defaults use the same market aliases as keyword commands: an unqualified key selects the

@@ -127,6 +127,7 @@ function hasHistoryUnavailable(snapshot: BacklinksSnapshot): boolean {
 function snapshotSummary(snapshot: BacklinksSnapshot) {
   const summary = renderKeyValues([
     ["target", snapshot.target],
+    ["snapshot_ref", snapshot.snapshot_ref],
     ["scope", snapshot.target_scope],
     ["include subdomains", snapshot.include_subdomains ? "yes" : "no"],
     ["backlinks total", snapshot.summary.backlinks_total],
@@ -308,9 +309,11 @@ export async function commandBacklinksAnalyze(ctx: CommandContext, rest: readonl
 
 export async function commandBacklinksMore(ctx: CommandContext, rest: readonly string[]) {
   const target = targetFromRest(rest);
+  const snapshotRef = getStringFlag(ctx.args, "snapshot-ref");
   const options: LoadMoreBacklinkRowsOptions = {
     ...scopeOptions(ctx),
     limit: loadMoreLimit(getStringFlag(ctx.args, "limit")),
+    ...(snapshotRef !== undefined ? { snapshotRef } : {}),
     target,
   };
   const { client, settings } = await settingsAndClient(ctx);
@@ -323,6 +326,7 @@ export async function commandBacklinksMore(ctx: CommandContext, rest: readonly s
     return renderJson(response);
   }
   return `Fetched ${response.data.rows.length} more rows.\n${renderKeyValues([
+    ["snapshot_ref", response.data.snapshot_ref],
     ["fetched rows", `${response.data.fetched_row_count} / ${response.data.total_rows_available}`],
   ])}`;
 }

@@ -2,6 +2,10 @@
 
 ## Unreleased
 
+## [0.17.1] - 2026-10-16
+
+- Add `backlinks more --snapshot-ref` and show the latest `snapshot_ref` in analyze and more output for chained calls.
+
 ## 0.17.0 - 2026-10-14
 
 - Add capability-checked project defaults previews and explicit signed review commands; previews leave settings unchanged.

@@ -141,6 +141,7 @@ export const valueFlags = new Set([
   "serp-feature",
   "severity",
   "since",
+  "snapshot-ref",
   "sort",
   "source",
   "start-date",

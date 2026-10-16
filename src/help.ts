@@ -116,6 +116,7 @@ Analyze options:
 
 More options:
   --project <id>, -p <id>      Project ID
+  --snapshot-ref <ref>         snapshot_ref from the previous analyze or more output
   --page                       Use the page-scoped snapshot
   --no-subdomains              Use the site snapshot that excludes subdomains
   --limit <n>                  Rows to fetch, a multiple of 100 through 1000
@@ -124,6 +125,9 @@ More options:
 These write-scope commands can make paid lookups on the project's DataForSEO
 account. Analyze snapshots are cached for 24 hours. Domains, pages, and anchors
 are aggregated locally within the fetched rows.
+Pass the latest snapshot_ref to more; each successful call returns a replacement.
+Missing or stale references return 409 snapshot_expired. Analyze again to get a
+current reference before retrying more.
 
 A dry run returns cost facts only: the normalized target, the provider, whether
 an unexpired snapshot exists, and the estimated cost. It carries no summary,

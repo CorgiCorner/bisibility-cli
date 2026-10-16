@@ -557,6 +557,7 @@ function backlinksSnapshot(overrides: Record<string, unknown> = {}) {
       cost_cents: 7,
       fetched_at: "2026-07-24T15:00:00.000Z",
       fetched_row_count: 3,
+      snapshot_ref: "opaque:analyze/revision-1=",
       history: [],
       include_subdomains: true,
       provider: "dataforseo",
@@ -2298,6 +2299,8 @@ describe("backlinks commands", () => {
     );
 
     expect(paid.stdout).toContain("backlinks total");
+    expect(paid.exitCode).toBe(0);
+    expect(paid.stdout).toMatch(/snapshot_ref\s+opaque:analyze\/revision-1=/);
     expect(paid.stdout).toContain("Source domain");
     expect(paid.stdout).toContain("reddit.com");
     expect(paid.stdout).toContain("  -");
@@ -2305,7 +2308,10 @@ describe("backlinks commands", () => {
       "Paid lookup: $0.07 charged to your DataForSEO account (snapshot cached for 24h).\n",
     );
     expect(cached.stderr).toBe("");
-    expect(JSON.parse(cached.stdout)).toMatchObject({ data: { cached: true, cost_cents: 0 } });
+    expect(cached.exitCode).toBe(0);
+    expect(JSON.parse(cached.stdout)).toMatchObject({
+      data: { cached: true, cost_cents: 0, snapshot_ref: "opaque:analyze/revision-1=" },
+    });
   });
 
   it("warns in human output when history_unavailable flags a failed history fetch", async () => {
@@ -2366,6 +2372,7 @@ describe("backlinks commands", () => {
     sdk.client.loadMoreBacklinkRows.mockResolvedValueOnce(
       backlinksSnapshot({
         fetched_row_count: 203,
+        snapshot_ref: "opaque:append/revision-2=",
         include_subdomains: false,
         rows: [{ source_domain: "one.example" }, { source_domain: "two.example" }],
         target_scope: "page",
@@ -2383,6 +2390,8 @@ describe("backlinks commands", () => {
         "--no-subdomains",
         "--limit",
         "200",
+        "--snapshot-ref",
+        "opaque:analyze/revision-1=",
       ],
       deps(),
     );
@@ -2390,12 +2399,14 @@ describe("backlinks commands", () => {
     expect(result.exitCode).toBe(0);
     expect(result.stdout).toContain("Fetched 2 more rows.");
     expect(result.stdout).toContain("203 / 1685");
+    expect(result.stdout).toMatch(/snapshot_ref\s+opaque:append\/revision-2=/);
     expect(result.stderr).toBe(
       "Paid lookup: $0.07 charged to your DataForSEO account (snapshot cached for 24h).\n",
     );
     expect(sdk.client.loadMoreBacklinkRows).toHaveBeenCalledWith("prj_a10000000000000000000000", {
       includeSubdomains: false,
       limit: 200,
+      snapshotRef: "opaque:analyze/revision-1=",
       target: "https://example.com/pricing",
       targetScope: "page",
     });
@@ -2403,22 +2414,82 @@ describe("backlinks commands", () => {
 
   it("passes more JSON through without a cached cost notice", async () => {
     sdk.client.loadMoreBacklinkRows.mockResolvedValueOnce(
-      backlinksSnapshot({ cached: true, cost_cents: 0 }),
+      backlinksSnapshot({ cached: true, cost_cents: 0, snapshot_ref: "opaque:append/revision-3=" }),
     );
 
     const result = await runCli(
-      ["backlinks", "more", "example.com", "--project", "prj_a10000000000000000000000", "--json"],
+      [
+        "backlinks",
+        "more",
+        "example.com",
+        "--project",
+        "prj_a10000000000000000000000",
+        "--snapshot-ref=opaque:append/revision-2=",
+        "--json",
+      ],
       deps(),
     );
 
-    expect(JSON.parse(result.stdout)).toMatchObject({ data: { cached: true } });
+    expect(result.exitCode).toBe(0);
+    expect(JSON.parse(result.stdout)).toMatchObject({
+      data: { cached: true, snapshot_ref: "opaque:append/revision-3=" },
+    });
     expect(result.stderr).toBe("");
     expect(sdk.client.loadMoreBacklinkRows).toHaveBeenCalledWith("prj_a10000000000000000000000", {
       includeSubdomains: true,
       limit: 100,
+      snapshotRef: "opaque:append/revision-2=",
       target: "example.com",
       targetScope: "site",
     });
+  });
+
+  it.each([false, true])("renders snapshot_expired clearly (JSON mode: %s)", async (json) => {
+    sdk.client.loadMoreBacklinkRows.mockRejectedValueOnce(
+      new BisibilityApiError("Backlink snapshot has expired.", {
+        body: undefined,
+        headers: new Headers(),
+        method: "POST",
+        problem: {
+          detail: "Backlink snapshot has expired. Analyze again before loading more rows.",
+          errors: { reason: "snapshot_expired" },
+        },
+        status: 409,
+        url: "https://api.example.com/api/v1/projects/prj_a10000000000000000000000/backlinks/more",
+      }),
+    );
+
+    const result = await runCli(
+      [
+        "backlinks",
+        "more",
+        "example.com",
+        "--project",
+        "prj_a10000000000000000000000",
+        "--snapshot-ref",
+        "stale-reference",
+        ...(json ? ["--json"] : []),
+      ],
+      deps(),
+    );
+
+    expect(result.exitCode).toBe(1);
+    expect(result.stdout).toBe("");
+    expect(result.stderr).toBe(
+      "API error 409: Backlink snapshot has expired. Analyze again before loading more rows. Details: reason=snapshot_expired.\n",
+    );
+    expect(sdk.client.loadMoreBacklinkRows).toHaveBeenCalledTimes(1);
+    expect(sdk.client.analyzeBacklinks).not.toHaveBeenCalled();
+  });
+
+  it("documents the snapshot reference source and replacement in help", async () => {
+    const result = await runCli(["backlinks", "more", "--help"], deps());
+
+    expect(result.exitCode).toBe(0);
+    expect(result.stdout).toContain("--snapshot-ref <ref>");
+    expect(result.stdout).toContain("snapshot_ref from the previous analyze or more output");
+    expect(result.stdout).toContain("each successful call returns a replacement");
+    expect(sdk.client.loadMoreBacklinkRows).not.toHaveBeenCalled();
   });
 
   it("renders a cost-only dry run instead of an empty report", async () => {
