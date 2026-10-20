@@ -2,6 +2,10 @@
 
 ## Unreleased
 
+## 0.18.0 - 2026-10-20
+
+- Use `@bisibility/sdk` 0.18.0 and align the version with the 0.18 release of the Bisibility SDKs, CLI and MCP server.
+
 ## [0.17.1] - 2026-10-16
 
 - Add `backlinks more --snapshot-ref` and show the latest `snapshot_ref` in analyze and more output for chained calls.
