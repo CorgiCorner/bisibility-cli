@@ -2,6 +2,13 @@
 
 ## Unreleased
 
+## 0.19.0 - 2026-10-25
+
+- Add check summary policy, threshold, and provider incident notification flags; deprecate `--check-in-app` and display API update warnings.
+- Show rank check result completeness, evidence status, and returned depth while preserving new evidence fields in JSON output.
+- Clarify that new SERP connections start disabled unless no other SERP connection is enabled.
+- Use `@bisibility/sdk` 0.22.0 for current API contracts and cloud-import compatibility.
+
 ## 0.18.0 - 2026-10-20
 
 - Use `@bisibility/sdk` 0.18.0 and align the version with the 0.18 release of the Bisibility SDKs, CLI and MCP server.

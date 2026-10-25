@@ -677,6 +677,7 @@ Options:
 
 Priority 0 promotes the provider and renumbers the fallback chain. On connect,
 omitting --priority keeps a reconnected provider's place and appends a new one.
+A new SERP connection starts disabled unless no other SERP connection is enabled.
 
 For Plausible, --login is the site domain configured in Plausible (its site_id,
 for example example.com) and defaults to the project domain when omitted, and
@@ -749,7 +750,11 @@ Options:
   --alert-slack <true|false>
   --alert-webhook <true|false>
   --check-email <true|false>
-  --check-in-app <true|false>
+  --check-notification-setting <all|important|none>  Check summary policy
+  --check-notification-top-n <n>                   Top-N threshold, 1 through 100
+  --check-notification-position-move <n>           Movement threshold, 1 through 100
+  --provider-incident-in-app <true|false>
+  --check-in-app <true|false>   Deprecated; ignored by API, use --check-notification-setting
   --import-email <true|false>
   --import-in-app <true|false>
   --invite-email <true|false>

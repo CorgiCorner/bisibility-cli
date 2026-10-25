@@ -311,6 +311,11 @@ migration flow and check it with `bisibility cloud compat`. Migration tokens can
 `BISIBILITY_MIGRATION_TOKEN`. CLI `0.18.0` accepts migration schemas v5, v6 and v7 through
 the SDK compatibility verifier.
 
+The CLI preserves notification preference fields in Cloud migration packages. The published
+SDK 0.18.0 validator still rejects `check_notification_setting`, `check_notification_top_n`,
+`check_notification_position_move`, and `provider_incident_in_app` in those packages; importing
+them requires an SDK with the updated Cloud import contract.
+
 Project defaults use the same market aliases as keyword commands: an unqualified key selects the
 default language and an `@language` suffix selects another supported country-language pair.
 
@@ -328,10 +333,35 @@ bisibility providers test plausible
 `--priority` accepts values from 0 through 1000, with `0` promoting a provider. The legacy
 `--primary` flag also remains supported.
 Omitting `--priority` keeps a reconnected provider's place and appends a new one.
+A new SERP connection starts disabled unless no other SERP connection is enabled.
 
 For Plausible, `--login` is the site domain configured in Plausible (its `site_id`, such as
 `example.com`) and defaults to the project domain when omitted; `--provider-api-key` is the
 Plausible Stats API token. Use `--endpoint` only for a self-hosted instance.
+
+### Notification preferences
+
+```sh
+bisibility notifications prefs --project "$PROJECT_ID"
+bisibility notifications prefs set --project "$PROJECT_ID" \
+  --check-notification-setting important --check-notification-top-n 10 \
+  --check-notification-position-move 5 --provider-incident-in-app true
+```
+
+`--check-notification-setting` accepts `all`, `important`, or `none`. Both threshold flags
+accept integers from 1 through 100. Omitted flags leave preferences unchanged. Reads show
+the check summary policy, thresholds, and provider incident preference.
+
+`--check-in-app <true|false>` remains accepted for one release, prints a deprecation notice,
+and sends the deprecated `check_in_app` field so the API can return its warning. The API
+ignores that field on writes; use `--check-notification-setting`. Update warnings print to
+stderr and remain in `--json` output.
+
+Check details show result completeness as `result`, evidence status as `evidence`, and returned
+organic depth as `depth`; check lists include the same values. Missing or unknown values display
+as `-`. JSON keeps the complete response, including `comparison_allowed`, evidence projections,
+run projections, and rank-history report fields. Partial or unresolved evidence does not establish
+a full-depth no-match, and retained projections do not replay historical rank comparisons.
 
 ## Command groups
 

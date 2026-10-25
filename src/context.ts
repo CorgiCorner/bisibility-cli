@@ -15,7 +15,6 @@ import type {
   RankCheck,
   RankCheckFrequency,
   RankCheckStatus,
-  UpdateNotificationPreferencesInput,
 } from "@bisibility/sdk";
 import { BisibilityClient } from "@bisibility/sdk";
 import {
@@ -26,6 +25,7 @@ import {
   readConfigFile,
   writeConfigFile,
 } from "./config.js";
+import type { NotificationPreferencesPatch } from "./evidence-fields.js";
 import { type ParsedArgs, getStringFlag, getStringFlags, hasFlag } from "./parser.js";
 import {
   type PublicIdForPrefix,
@@ -664,17 +664,37 @@ export function notificationInput(args: ParsedArgs) {
     ["alert-webhook", "alert_webhook"],
     ["check-email", "check_email"],
     ["check-in-app", "check_in_app"],
+    ["provider-incident-in-app", "provider_incident_in_app"],
     ["import-email", "import_email"],
     ["import-in-app", "import_in_app"],
     ["invite-email", "invite_email"],
     ["invite-in-app", "invite_in_app"],
   ] as const;
-  const input: UpdateNotificationPreferencesInput = {};
+  const input: NotificationPreferencesPatch = {};
   for (const [flag, key] of mappings) {
     const value = parseBoolean(getStringFlag(args, flag), `--${flag}`);
     if (value !== undefined) {
       input[key] = value;
     }
+  }
+  const setting = getStringFlag(args, "check-notification-setting");
+  if (setting !== undefined) {
+    if (setting !== "all" && setting !== "important" && setting !== "none") {
+      throw new CliError("--check-notification-setting must be all, important, or none.");
+    }
+    input.check_notification_setting = setting;
+  }
+  for (const [flag, key] of [
+    ["check-notification-top-n", "check_notification_top_n"],
+    ["check-notification-position-move", "check_notification_position_move"],
+  ] as const) {
+    const raw = getStringFlag(args, flag);
+    if (raw === undefined) continue;
+    const value = Number(raw);
+    if (!Number.isInteger(value) || value < 1 || value > 100) {
+      throw new CliError(`--${flag} must be an integer from 1 through 100.`);
+    }
+    input[key] = value;
   }
   return input;
 }

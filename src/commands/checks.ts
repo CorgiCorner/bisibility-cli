@@ -5,6 +5,7 @@ import type {
   RunRankCheckInput,
   RunRankCheckResult,
 } from "@bisibility/sdk";
+import type { RankCheckWithEvidence } from "../evidence-fields.js";
 import { renderJson, renderKeyValues, renderTable } from "../format.js";
 import { type ParsedArgs, getStringFlag, hasFlag } from "../parser.js";
 import { assertPublicId } from "../public-id.js";
@@ -38,6 +39,7 @@ function observationCompletenessLabel(check: RankCheckWithCompleteness) {
 
 export function rankCheckSummary(result: RankCheck) {
   const widened = result as RankCheckWithCompleteness;
+  const evidence = result as RankCheckWithEvidence;
   return renderKeyValues([
     ["check", result.id],
     ["keyword", result.keyword_id],
@@ -47,6 +49,9 @@ export function rankCheckSummary(result: RankCheck) {
     ["provider", result.provider],
     ["url", result.ranking_url],
     ["coverage", observationCompletenessLabel(widened)],
+    ["result", evidence.result_completeness],
+    ["evidence", evidence.evidence_projection?.result],
+    ["depth", evidence.returned_depth],
     ["error", result.error],
   ]);
 }
@@ -76,6 +81,18 @@ export function rankCheckColumns() {
     {
       header: "coverage",
       value: (check: RankCheck) => observationCompletenessLabel(check as RankCheckWithCompleteness),
+    },
+    {
+      header: "completeness",
+      value: (check: RankCheckWithEvidence) => check.result_completeness,
+    },
+    {
+      header: "evidence",
+      value: (check: RankCheckWithEvidence) => check.evidence_projection?.result,
+    },
+    {
+      header: "returned_depth",
+      value: (check: RankCheckWithEvidence) => check.returned_depth,
     },
     { header: "error", value: (check: RankCheck) => check.error },
   ];

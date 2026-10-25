@@ -1,0 +1,85 @@
+{
+  "preferences": {
+    "alert_email": true,
+    "alert_in_app": true,
+    "alert_push": true,
+    "provider_incident_in_app": true,
+    "check_email": false,
+    "check_in_app": false,
+    "check_notification_setting": "none",
+    "check_notification_top_n": 33,
+    "check_notification_position_move": 7,
+    "import_email": true,
+    "import_in_app": true,
+    "invite_email": true,
+    "invite_in_app": true,
+    "report_email": true,
+    "alert_slack": false,
+    "alert_webhook": false,
+    "email": "owner@example.com",
+    "email_verification": "verified",
+    "project_id": "prj_a00000000000000000000000",
+    "slack_available": false,
+    "webhook_available": false
+  },
+  "history": {
+    "data": [
+      {
+        "evidence_projection": null,
+        "checked_at": "2026-07-20T10:00:00.000Z",
+        "id": "check_a00000000000000000000000",
+        "keyword": "rank tracker",
+        "keyword_id": "kw_a00000000000000000000000",
+        "normalization_version": "fixture-v1",
+        "position": 4,
+        "previous_position": 7,
+        "provider": "synthetic",
+        "ranking_url": "https://example.com/rank",
+        "requested_depth": 100
+      }
+    ],
+    "meta": {
+      "next_cursor": null
+    }
+  },
+  "run": {
+    "id": "rcr_a00000000000000000000000",
+    "project_id": "prj_a00000000000000000000000",
+    "status": "future_status",
+    "outcome": null,
+    "terminal": false,
+    "polling_state": "unknown",
+    "trigger": "manual",
+    "counts": {
+      "requested": 1,
+      "total": 1,
+      "completed": 0,
+      "failed": 0,
+      "deferred": 0,
+      "skipped": 0,
+      "cancelled": 0
+    },
+    "counts_basis": "planned_or_unlaunched",
+    "keyword_count": 1,
+    "target_count": 1,
+    "planned_for": null,
+    "launched_at": null,
+    "started_at": null,
+    "finished_at": null,
+    "blocked_reason": null,
+    "parent_run_id": null,
+    "cost_cents": null,
+    "usage": {
+      "actual": null,
+      "estimated": null,
+      "unit": "operations"
+    },
+    "native_estimate": {
+      "provider_id": null,
+      "unit": null,
+      "quantity": null,
+      "unknown_targets": 1
+    },
+    "evidence_projections": null
+  }
+}
